@@ -13,7 +13,8 @@ type Gate interface {
 }
 
 type Answer struct {
-	Content any
+	Content     any
+	ContentType string
 }
 
 type Password struct {
@@ -47,7 +48,8 @@ func (pw Password) Generate() Answer {
 	pwstr, _ := settings.Generate()
 
 	return Answer{
-		Content: pwstr,
+		Content:     pwstr,
+		ContentType: "string",
 	}
 }
 

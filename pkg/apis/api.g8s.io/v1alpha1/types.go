@@ -67,7 +67,7 @@ type Rotation struct {
 	Status RotationStatus `json:"status,omitempty"`
 }
 
-// RotationSpec defines the desired state of Password
+// RotationSpec defines the desired state of Rotation
 type RotationSpec struct {
 	Target string `json:"target"`
 }
@@ -77,7 +77,7 @@ const (
 	PhaseComplete = "COMPLETE"
 )
 
-// RotationStatus defines the observed state of Password
+// RotationStatus defines the observed state of Rotation
 type RotationStatus struct {
 	Phase string `json:"phase,omitempty"`
 }
