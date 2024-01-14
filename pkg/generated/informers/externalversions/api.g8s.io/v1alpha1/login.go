@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// PasswordInformer provides access to a shared informer and lister for
-// Passwords.
-type PasswordInformer interface {
+// LoginInformer provides access to a shared informer and lister for
+// Logins.
+type LoginInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.PasswordLister
+	Lister() v1alpha1.LoginLister
 }
 
-type passwordInformer struct {
+type loginInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewPasswordInformer constructs a new informer for Password type.
+// NewLoginInformer constructs a new informer for Login type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewPasswordInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredPasswordInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewLoginInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredLoginInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredPasswordInformer constructs a new informer for Password type.
+// NewFilteredLoginInformer constructs a new informer for Login type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredPasswordInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredLoginInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().Passwords(namespace).List(context.TODO(), options)
+				return client.ApiV1alpha1().Logins(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().Passwords(namespace).Watch(context.TODO(), options)
+				return client.ApiV1alpha1().Logins(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&apig8siov1alpha1.Password{},
+		&apig8siov1alpha1.Login{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *passwordInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredPasswordInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *loginInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredLoginInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *passwordInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apig8siov1alpha1.Password{}, f.defaultInformer)
+func (f *loginInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apig8siov1alpha1.Login{}, f.defaultInformer)
 }
 
-func (f *passwordInformer) Lister() v1alpha1.PasswordLister {
-	return v1alpha1.NewPasswordLister(f.Informer().GetIndexer())
+func (f *loginInformer) Lister() v1alpha1.LoginLister {
+	return v1alpha1.NewLoginLister(f.Informer().GetIndexer())
 }

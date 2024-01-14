@@ -27,12 +27,12 @@ type FakeApiV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeApiV1alpha1) Passwords(namespace string) v1alpha1.PasswordInterface {
-	return &FakePasswords{c, namespace}
+func (c *FakeApiV1alpha1) Logins(namespace string) v1alpha1.LoginInterface {
+	return &FakeLogins{c, namespace}
 }
 
-func (c *FakeApiV1alpha1) Rotations(namespace string) v1alpha1.RotationInterface {
-	return &FakeRotations{c, namespace}
+func (c *FakeApiV1alpha1) SSHKeys(namespace string) v1alpha1.SSHKeyInterface {
+	return &FakeSSHKeys{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

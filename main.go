@@ -58,8 +58,8 @@ func main() {
 	g8sInformerFactory := informers.NewSharedInformerFactory(g8sClient, time.Second*30)
 
 	controller := controller.NewController(ctx, kubeClient, g8sClient,
-		g8sInformerFactory.Api().V1alpha1().Passwords(),
-		g8sInformerFactory.Api().V1alpha1().Rotations(),
+		g8sInformerFactory.Api().V1alpha1().Logins(),
+		g8sInformerFactory.Api().V1alpha1().SSHKeys(),
 		kubeInformerFactory.Core().V1().Secrets(),
 		kubeInformerFactory.Batch().V1().Jobs(),
 	)

@@ -27,8 +27,8 @@ import (
 
 type ApiV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	PasswordsGetter
-	RotationsGetter
+	LoginsGetter
+	SSHKeysGetter
 }
 
 // ApiV1alpha1Client is used to interact with features provided by the api.g8s.io group.
@@ -36,12 +36,12 @@ type ApiV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ApiV1alpha1Client) Passwords(namespace string) PasswordInterface {
-	return newPasswords(c, namespace)
+func (c *ApiV1alpha1Client) Logins(namespace string) LoginInterface {
+	return newLogins(c, namespace)
 }
 
-func (c *ApiV1alpha1Client) Rotations(namespace string) RotationInterface {
-	return newRotations(c, namespace)
+func (c *ApiV1alpha1Client) SSHKeys(namespace string) SSHKeyInterface {
+	return newSSHKeys(c, namespace)
 }
 
 // NewForConfig creates a new ApiV1alpha1Client for the given config.

@@ -17,6 +17,6 @@ limitations under the License.
 
 package v1alpha1
 
-type PasswordExpansion interface{}
+type LoginExpansion interface{}
 
-type RotationExpansion interface{}
+type SSHKeyExpansion interface{}

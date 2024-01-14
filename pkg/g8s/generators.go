@@ -17,8 +17,8 @@ type Answer struct {
 	ContentType string
 }
 
-type Password struct {
-	v1alpha1.Password
+type Login struct {
+	v1alpha1.Login
 	backend
 }
 
@@ -27,9 +27,9 @@ type backend struct {
 	history []string
 }
 
-func PasswordWithBackend(pw *v1alpha1.Password) Password {
-	return Password{
-		*pw,
+func LoginWithBackend(l *v1alpha1.Login) Login {
+	return Login{
+		*l,
 		backend{
 			content: "",
 			history: []string{},
@@ -38,29 +38,29 @@ func PasswordWithBackend(pw *v1alpha1.Password) Password {
 }
 
 // Answer.Content.(string)
-func (pw Password) Generate() Answer {
+func (l Login) Generate() Answer {
 	settings := password.Settings{
-		Length:       int(pw.Spec.Length),
-		CharacterSet: pw.Spec.CharacterSet,
+		Length:       int(l.Spec.Length),
+		CharacterSet: l.Spec.Password.CharacterSet,
 	}
 
 	// error can be ignored because if there's a problem it will be handled in the controller (processNextWorkItem will requeue it)
-	pwstr, _ := settings.Generate()
+	lstr, _ := settings.Generate()
 
 	return Answer{
-		Content:     pwstr,
+		Content:     lstr,
 		ContentType: "string",
 	}
 }
 
-func (pw Password) Rotate() map[string]string {
-	newContent := pw.Generate().Content.(string)
-	newHistory := append([]string{newContent}, pw.history...)
+func (l Login) Rotate() map[string]string {
+	newContent := l.Generate().Content.(string)
+	newHistory := append([]string{newContent}, l.history...)
 	ans := make(map[string]string)
 
-	for i, pw := range newHistory {
+	for i, l := range newHistory {
 		histitem := "password-" + strconv.Itoa(i)
-		ans[histitem] = pw
+		ans[histitem] = l
 	}
 
 	return ans

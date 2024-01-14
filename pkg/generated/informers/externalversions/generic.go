@@ -52,10 +52,10 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=api.g8s.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("passwords"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().Passwords().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("rotations"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().Rotations().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("logins"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().Logins().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("sshkeys"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().SSHKeys().Informer()}, nil
 
 	}
 

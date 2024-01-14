@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// RotationInformer provides access to a shared informer and lister for
-// Rotations.
-type RotationInformer interface {
+// SSHKeyInformer provides access to a shared informer and lister for
+// SSHKeys.
+type SSHKeyInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.RotationLister
+	Lister() v1alpha1.SSHKeyLister
 }
 
-type rotationInformer struct {
+type sSHKeyInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewRotationInformer constructs a new informer for Rotation type.
+// NewSSHKeyInformer constructs a new informer for SSHKey type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewRotationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredRotationInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewSSHKeyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredSSHKeyInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredRotationInformer constructs a new informer for Rotation type.
+// NewFilteredSSHKeyInformer constructs a new informer for SSHKey type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredRotationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredSSHKeyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().Rotations(namespace).List(context.TODO(), options)
+				return client.ApiV1alpha1().SSHKeys(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().Rotations(namespace).Watch(context.TODO(), options)
+				return client.ApiV1alpha1().SSHKeys(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&apig8siov1alpha1.Rotation{},
+		&apig8siov1alpha1.SSHKey{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *rotationInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredRotationInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *sSHKeyInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredSSHKeyInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *rotationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apig8siov1alpha1.Rotation{}, f.defaultInformer)
+func (f *sSHKeyInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apig8siov1alpha1.SSHKey{}, f.defaultInformer)
 }
 
-func (f *rotationInformer) Lister() v1alpha1.RotationLister {
-	return v1alpha1.NewRotationLister(f.Informer().GetIndexer())
+func (f *sSHKeyInformer) Lister() v1alpha1.SSHKeyLister {
+	return v1alpha1.NewSSHKeyLister(f.Informer().GetIndexer())
 }

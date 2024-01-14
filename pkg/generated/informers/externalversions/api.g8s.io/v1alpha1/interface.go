@@ -23,10 +23,10 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// Passwords returns a PasswordInformer.
-	Passwords() PasswordInformer
-	// Rotations returns a RotationInformer.
-	Rotations() RotationInformer
+	// Logins returns a LoginInformer.
+	Logins() LoginInformer
+	// SSHKeys returns a SSHKeyInformer.
+	SSHKeys() SSHKeyInformer
 }
 
 type version struct {
@@ -40,12 +40,12 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// Passwords returns a PasswordInformer.
-func (v *version) Passwords() PasswordInformer {
-	return &passwordInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// Logins returns a LoginInformer.
+func (v *version) Logins() LoginInformer {
+	return &loginInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// Rotations returns a RotationInformer.
-func (v *version) Rotations() RotationInformer {
-	return &rotationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// SSHKeys returns a SSHKeyInformer.
+func (v *version) SSHKeys() SSHKeyInformer {
+	return &sSHKeyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

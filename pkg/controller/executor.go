@@ -21,10 +21,10 @@ const (
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Secret already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Password"
+	MessageResourceExists = "Resource %q already exists and is not managed by Login"
 	// MessageResourceSynced is the message used for an Event fired when a CR
 	// is synced successfully
-	MessageResourceSynced = "Password synced successfully"
+	MessageResourceSynced = "Login synced successfully"
 )
 
 type Executor struct {
@@ -33,8 +33,8 @@ type Executor struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
-	passwordWorkqueue workqueue.RateLimitingInterface
-	rotationWorkqueue workqueue.RateLimitingInterface
+	loginWorkqueue  workqueue.RateLimitingInterface
+	sshKeyWorkqueue workqueue.RateLimitingInterface
 }
 
 // Run will set up the event handlers for types we are interested in, as well
@@ -43,24 +43,24 @@ type Executor struct {
 // workers to finish processing their current work items.
 func (c *Controller) Run(ctx context.Context, workers int) error {
 	defer utilruntime.HandleCrash()
-	defer c.passwordWorkqueue.ShutDown()
+	defer c.loginWorkqueue.ShutDown()
 	logger := klog.FromContext(ctx)
 
 	// Start the informer factories to begin populating the informer caches
-	logger.Info("Starting Password controller")
+	logger.Info("Starting Login controller")
 
 	// Wait for the caches to be synced before starting workers
 	logger.Info("Waiting for informer caches to sync")
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.passwordsSynced, c.secretsSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.loginsSynced, c.secretsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
 	logger.Info("Starting workers", "count", workers)
 	// Launch two workers to process At resources
 	for i := 0; i < workers; i++ {
-		go wait.UntilWithContext(ctx, c.runPasswordWorker, time.Second)
-		go wait.UntilWithContext(ctx, c.runRotationWorker, time.Second)
+		go wait.UntilWithContext(ctx, c.runLoginWorker, time.Second)
+		go wait.UntilWithContext(ctx, c.runSSHKeyWorker, time.Second)
 	}
 
 	logger.Info("Started workers")

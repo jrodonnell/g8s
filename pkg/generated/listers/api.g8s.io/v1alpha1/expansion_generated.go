@@ -17,18 +17,18 @@ limitations under the License.
 
 package v1alpha1
 
-// PasswordListerExpansion allows custom methods to be added to
-// PasswordLister.
-type PasswordListerExpansion interface{}
+// LoginListerExpansion allows custom methods to be added to
+// LoginLister.
+type LoginListerExpansion interface{}
 
-// PasswordNamespaceListerExpansion allows custom methods to be added to
-// PasswordNamespaceLister.
-type PasswordNamespaceListerExpansion interface{}
+// LoginNamespaceListerExpansion allows custom methods to be added to
+// LoginNamespaceLister.
+type LoginNamespaceListerExpansion interface{}
 
-// RotationListerExpansion allows custom methods to be added to
-// RotationLister.
-type RotationListerExpansion interface{}
+// SSHKeyListerExpansion allows custom methods to be added to
+// SSHKeyLister.
+type SSHKeyListerExpansion interface{}
 
-// RotationNamespaceListerExpansion allows custom methods to be added to
-// RotationNamespaceLister.
-type RotationNamespaceListerExpansion interface{}
+// SSHKeyNamespaceListerExpansion allows custom methods to be added to
+// SSHKeyNamespaceLister.
+type SSHKeyNamespaceListerExpansion interface{}

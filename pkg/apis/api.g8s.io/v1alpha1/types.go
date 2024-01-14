@@ -20,18 +20,31 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type SSHKeyType string
+
+const (
+	RSA     SSHKeyType = "rsa"
+	Ed25519 SSHKeyType = "ed25519"
+)
+
 // +genclient
 // +k8s:register-gen
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// Password is the Schema for the passwords API
-type Password struct {
+// Login is the Schema for the passwords API
+type Login struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PasswordSpec   `json:"spec,omitempty"`
-	Status PasswordStatus `json:"status,omitempty"`
+	Spec   LoginSpec   `json:"spec,omitempty"`
+	Status LoginStatus `json:"status,omitempty"`
+}
+
+// LoginSpec defines the desired state of Login
+type LoginSpec struct {
+	Length   uint8         `json:"length,omitempty"`
+	Password *PasswordSpec `json:"password,omitempty"`
 }
 
 // PasswordSpec defines the desired state of Password
@@ -40,17 +53,17 @@ type PasswordSpec struct {
 	CharacterSet string `json:"characterset,omitempty"`
 }
 
-// PasswordStatus defines the observed state of Password
-type PasswordStatus struct {
+// LoginStatus defines the observed state of Login
+type LoginStatus struct {
 	Ready bool `json:"ready"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// PasswordList contains a list of Password
-type PasswordList struct {
+// LoginList contains a list of Login
+type LoginList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Password `json:"items"`
+	Items           []Login `json:"items"`
 }
 
 // +genclient
@@ -58,34 +71,31 @@ type PasswordList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// Rotation is the Schema for the rotation API
-type Rotation struct {
+// SSHKey is the Schema for the passwords API
+type SSHKey struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   RotationSpec   `json:"spec,omitempty"`
-	Status RotationStatus `json:"status,omitempty"`
+	Spec   SSHKeySpec   `json:"spec,omitempty"`
+	Status SSHKeyStatus `json:"status,omitempty"`
 }
 
-// RotationSpec defines the desired state of Rotation
-type RotationSpec struct {
-	Target string `json:"target"`
+// SSHKeySpec defines the desired state of SSHKey
+type SSHKeySpec struct {
+	BitSize    int        `json:"bitsize,omitempty"`
+	KeyType    SSHKeyType `json:"keytype,omitempty"`
+	Passphrase string     `json:"passphrase,omitempty"`
 }
 
-const (
-	PhaseRunning  = "RUNNING"
-	PhaseComplete = "COMPLETE"
-)
-
-// RotationStatus defines the observed state of Rotation
-type RotationStatus struct {
-	Phase string `json:"phase,omitempty"`
+// SSHKeyStatus defines the observed state of SSHKey
+type SSHKeyStatus struct {
+	Ready bool `json:"ready"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// RotationList contains a list of Rotation
-type RotationList struct {
+// SSHKeyList contains a list of SSHKey
+type SSHKeyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Rotation `json:"items"`
+	Items           []SSHKey `json:"items"`
 }

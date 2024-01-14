@@ -14,25 +14,25 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// runPasswordWorker is a long-running function that will continually call the
-// processNextPasswordWorkItem function in order to read and process a message on the
+// runLoginWorker is a long-running function that will continually call the
+// processNextLoginWorkItem function in order to read and process a message on the
 // workqueue.
-func (c *Controller) runPasswordWorker(ctx context.Context) {
-	for c.processNextPasswordWorkItem(ctx) {
+func (c *Controller) runLoginWorker(ctx context.Context) {
+	for c.processNextLoginWorkItem(ctx) {
 	}
 }
 
-// processNextPasswordWorkItem will read a single work item off the workqueue and
-// attempt to process it, by calling the passwordSyncHandler.
-func (c *Controller) processNextPasswordWorkItem(ctx context.Context) bool {
-	obj, shutdown := c.passwordWorkqueue.Get()
+// processNextLoginWorkItem will read a single work item off the workqueue and
+// attempt to process it, by calling the loginSyncHandler.
+func (c *Controller) processNextLoginWorkItem(ctx context.Context) bool {
+	obj, shutdown := c.loginWorkqueue.Get()
 	logger := klog.FromContext(ctx)
 
 	if shutdown {
 		return false
 	}
 
-	// We wrap this block in a func so we can defer c.passwordWorkqueue.Done.
+	// We wrap this block in a func so we can defer c.loginWorkqueue.Done.
 	err := func(obj interface{}) error {
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if we
@@ -40,7 +40,7 @@ func (c *Controller) processNextPasswordWorkItem(ctx context.Context) bool {
 		// not call Forget if a transient error occurs, instead the item is
 		// put back on the workqueue and attempted again after a back-off
 		// period.
-		defer c.passwordWorkqueue.Done(obj)
+		defer c.loginWorkqueue.Done(obj)
 		var key string
 		var ok bool
 		// We expect strings to come off the workqueue. These are of the
@@ -52,20 +52,20 @@ func (c *Controller) processNextPasswordWorkItem(ctx context.Context) bool {
 			// As the item in the workqueue is actually invalid, we call
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
-			c.passwordWorkqueue.Forget(obj)
+			c.loginWorkqueue.Forget(obj)
 			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
 			return nil
 		}
-		// Run the passwordSyncHandler, passing it the namespace/name string of the
-		// Password resource to be synced.
-		if err := c.passwordSyncHandler(ctx, key); err != nil {
+		// Run the loginSyncHandler, passing it the namespace/name string of the
+		// Login resource to be synced.
+		if err := c.loginSyncHandler(ctx, key); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
-			c.passwordWorkqueue.AddRateLimited(key)
+			c.loginWorkqueue.AddRateLimited(key)
 			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
-		c.passwordWorkqueue.Forget(obj)
+		c.loginWorkqueue.Forget(obj)
 		logger.Info("Successfully synced", "resourceName", key)
 		return nil
 	}(obj)
@@ -78,10 +78,10 @@ func (c *Controller) processNextPasswordWorkItem(ctx context.Context) bool {
 	return true
 }
 
-// passwordSyncHandler compares the actual state with the desired, and attempts to
-// converge the two. It then updates the Status block of the Password resource
+// loginSyncHandler compares the actual state with the desired, and attempts to
+// converge the two. It then updates the Status block of the Login resource
 // with the current status of the resource.
-func (c *Controller) passwordSyncHandler(ctx context.Context, key string) error {
+func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	logger := klog.LoggerWithValues(klog.FromContext(ctx), "resourceName", key)
 
@@ -91,41 +91,41 @@ func (c *Controller) passwordSyncHandler(ctx context.Context, key string) error 
 		return nil
 	}
 
-	// Get the Password resource with this namespace/name
-	password, err := c.passwordsLister.Passwords(namespace).Get(name)
+	// Get the Login resource with this namespace/name
+	login, err := c.loginsLister.Logins(namespace).Get(name)
 	if err != nil {
-		// The Password resource may no longer exist, in which case we stop
+		// The Login resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("password '%s' in work queue no longer exists", key))
+			utilruntime.HandleError(fmt.Errorf("login '%s' in work queue no longer exists", key))
 			return nil
 		}
 
 		return err
 	}
 
-	backendName := password.ObjectMeta.Name
-	historyName := password.ObjectMeta.Name + "-history"
-	// Get the backend Secret and history Secret with the name specified in Password.ObjectMeta.Name
-	backend, berr := c.secretsLister.Secrets(password.Namespace).Get(backendName)
-	history, herr := c.secretsLister.Secrets(password.Namespace).Get(historyName)
+	backendName := login.ObjectMeta.Name
+	historyName := login.ObjectMeta.Name + "-history"
+	// Get the backend Secret and history Secret with the name specified in Login.ObjectMeta.Name
+	backend, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
+	history, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
 
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")
-		g8sPw := g8s.PasswordWithBackend(password)
+		g8sPw := g8s.LoginWithBackend(login)
 		g8sPwContent := g8sPw.Rotate()
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(password.Namespace).Create(ctx, newBackendSecret(password, g8sPwContent["password-0"]), metav1.CreateOptions{})
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(password.Namespace).Create(ctx, newHistorySecret(password, g8sPwContent), metav1.CreateOptions{})
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newBackendSecret(login, g8sPwContent["login-0"]), metav1.CreateOptions{})
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newHistorySecret(login, g8sPwContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
-		pwbyte := history.Data["password-0"]
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(password.Namespace).Create(ctx, newBackendSecret(password, string(pwbyte)), metav1.CreateOptions{})
+		pwbyte := history.Data["login-0"]
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newBackendSecret(login, string(pwbyte)), metav1.CreateOptions{})
 	} else if errors.IsNotFound(herr) { // backend exists but history dne, rebuild history from backend
 		logger.V(4).Info("Create history Secret resources from backend")
-		pwbyte := backend.Data["password"]
-		pwmap := map[string]string{"password-0": string(pwbyte)}
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(password.Namespace).Create(ctx, newHistorySecret(password, pwmap), metav1.CreateOptions{})
+		pwbyte := backend.Data["login"]
+		pwmap := map[string]string{"login-0": string(pwbyte)}
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newHistorySecret(login, pwmap), metav1.CreateOptions{})
 	} else {
 		logger.V(4).Info("Secret resources for history and backend exist")
 	}
@@ -137,58 +137,58 @@ func (c *Controller) passwordSyncHandler(ctx context.Context, key string) error 
 		return err
 	}
 
-	// If the Secret is not controlled by this Password resource, we should log
+	// If the Secret is not controlled by this Login resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(backend, password) {
+	if !metav1.IsControlledBy(backend, login) {
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
-		c.recorder.Event(password, corev1.EventTypeWarning, ErrResourceExists, msg)
+		c.recorder.Event(login, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
 	}
 
-	// Finally, we update the status block of the Password resource to reflect the
+	// Finally, we update the status block of the Login resource to reflect the
 	// current state of the world
-	err = c.updatePasswordStatus(password, backend)
+	err = c.updateLoginStatus(login, backend)
 	if err != nil {
 		return err
 	}
 
-	c.recorder.Event(password, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	c.recorder.Event(login, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
-func (c *Controller) updatePasswordStatus(password *v1alpha1.Password, secret *corev1.Secret) error {
+func (c *Controller) updateLoginStatus(login *v1alpha1.Login, secret *corev1.Secret) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
-	passwordCopy := password.DeepCopy()
-	passwordCopy.Status.Ready = true
+	loginCopy := login.DeepCopy()
+	loginCopy.Status.Ready = true
 	// If the CustomResourceSubresources feature gate is not enabled,
-	// we must use Update instead of UpdateStatus to update the Status block of the Password resource.
+	// we must use Update instead of UpdateStatus to update the Status block of the Login resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.Client.g8sClientset.ApiV1alpha1().Passwords(password.Namespace).UpdateStatus(context.TODO(), passwordCopy, metav1.UpdateOptions{})
+	_, err := c.Client.g8sClientset.ApiV1alpha1().Logins(login.Namespace).UpdateStatus(context.TODO(), loginCopy, metav1.UpdateOptions{})
 	return err
 }
 
-// enqueuePassword takes a Password resource and converts it into a namespace/name
+// enqueueLogin takes a Login resource and converts it into a namespace/name
 // string which is then put onto the workqueue. This method should *not* be
-// passed resources of any type other than Password.
-func (c *Controller) enqueuePassword(obj any) {
+// passed resources of any type other than Login.
+func (c *Controller) enqueueLogin(obj any) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
-	c.passwordWorkqueue.Add(key)
+	c.loginWorkqueue.Add(key)
 }
 
-// handlePasswordObject will take any resource implementing metav1.Object and attempt
-// to find the Password resource that 'owns' it. It does this by looking at the
+// handleLoginObject will take any resource implementing metav1.Object and attempt
+// to find the Login resource that 'owns' it. It does this by looking at the
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
-// It then enqueues that Password resource to be processed. If the object does not
+// It then enqueues that Login resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (c *Controller) handlePasswordObject(obj interface{}) {
+func (c *Controller) handleLoginObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	logger := klog.FromContext(context.Background())
@@ -207,19 +207,19 @@ func (c *Controller) handlePasswordObject(obj interface{}) {
 	}
 	logger.V(4).Info("Processing object", "object", klog.KObj(object))
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-		// If this object is not owned by a Password, we should not do anything more
+		// If this object is not owned by a Login, we should not do anything more
 		// with it.
-		if ownerRef.Kind != "Password" {
+		if ownerRef.Kind != "Login" {
 			return
 		}
 
-		password, err := c.passwordsLister.Passwords(object.GetNamespace()).Get(ownerRef.Name)
+		login, err := c.loginsLister.Logins(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "password", ownerRef.Name)
+			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "login", ownerRef.Name)
 			return
 		}
 
-		c.enqueuePassword(password)
+		c.enqueueLogin(login)
 		return
 	}
 }
@@ -229,16 +229,16 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
-// newSecret creates a new Secret for a Password resource which contains the actual password.
-// It also sets the appropriate OwnerReferences on the resource so handlePasswordObject can discover
-// the Password resource that 'owns' it.
-func newBackendSecret(pw *v1alpha1.Password, pwstr string) *corev1.Secret {
+// newSecret creates a new Secret for a Login resource which contains the actual login.
+// It also sets the appropriate OwnerReferences on the resource so handleLoginObject can discover
+// the Login resource that 'owns' it.
+func newBackendSecret(pw *v1alpha1.Login, pwstr string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pw.ObjectMeta.Name,
 			Namespace: pw.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pw, v1alpha1.SchemeGroupVersion.WithKind("Password")),
+				*metav1.NewControllerRef(pw, v1alpha1.SchemeGroupVersion.WithKind("Login")),
 			},
 			Annotations: map[string]string{
 				"controller": "g8s",
@@ -246,23 +246,23 @@ func newBackendSecret(pw *v1alpha1.Password, pwstr string) *corev1.Secret {
 		},
 		Immutable: boolPtr(true),
 		StringData: map[string]string{
-			"password": pwstr,
+			"login": pwstr,
 		},
 		Type: "Opaque",
 	}
 }
 
-// newHistory creates a new Secret for a Password resource which contains the password's history.
-// It also sets the appropriate OwnerReferences on the resource so handlePasswordObject can discover
-// the Password resource that 'owns' it.
-func newHistorySecret(pw *v1alpha1.Password, pwhist map[string]string) *corev1.Secret {
+// newHistory creates a new Secret for a Login resource which contains the login's history.
+// It also sets the appropriate OwnerReferences on the resource so handleLoginObject can discover
+// the Login resource that 'owns' it.
+func newHistorySecret(pw *v1alpha1.Login, pwhist map[string]string) *corev1.Secret {
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pw.ObjectMeta.Name + "-history",
 			Namespace: pw.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pw, v1alpha1.SchemeGroupVersion.WithKind("Password")),
+				*metav1.NewControllerRef(pw, v1alpha1.SchemeGroupVersion.WithKind("Login")),
 			},
 			Annotations: map[string]string{
 				"controller": "g8s",

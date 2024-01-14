@@ -30,7 +30,7 @@ import (
 
 const controllerAgentName = "g8s-controller"
 
-// Controller is the controller implementation for Password resources
+// Controller is the controller implementation for Login resources
 type Controller struct {
 	Client
 	Executor
@@ -41,8 +41,8 @@ func NewController(
 	ctx context.Context,
 	kubeClientset kubernetes.Interface,
 	g8sClientset clientset.Interface,
-	passwordInformer informers.PasswordInformer,
-	rotationInformer informers.RotationInformer,
+	loginInformer informers.LoginInformer,
+	sshkeyInformer informers.SSHKeyInformer,
 	secretInformer secretinformers.SecretInformer,
 	jobInformer jobinformers.JobInformer) *Controller {
 
@@ -66,40 +66,42 @@ func NewController(
 
 	controller := &Controller{
 		Client: Client{
-			kubeClientset:    kubeClientset,
-			g8sClientset:     g8sClientset,
-			passwordInformer: passwordInformer,
-			secretInformer:   secretInformer,
-			passwordsLister:  passwordInformer.Lister(),
-			passwordsSynced:  passwordInformer.Informer().HasSynced,
-			secretsLister:    secretInformer.Lister(),
-			secretsSynced:    secretInformer.Informer().HasSynced,
-			recorder:         recorder,
+			kubeClientset:  kubeClientset,
+			g8sClientset:   g8sClientset,
+			loginInformer:  loginInformer,
+			secretInformer: secretInformer,
+			loginsLister:   loginInformer.Lister(),
+			loginsSynced:   loginInformer.Informer().HasSynced,
+			sshkeysLister:  sshkeyInformer.Lister(),
+			sshkeysSynced:  sshkeyInformer.Informer().HasSynced,
+			secretsLister:  secretInformer.Lister(),
+			secretsSynced:  secretInformer.Informer().HasSynced,
+			recorder:       recorder,
 		},
 		Executor: Executor{
-			passwordWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "Password"),
-			rotationWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "Rotation"),
+			loginWorkqueue:  workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
+			sshKeyWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKey"),
 		},
 	}
 
 	logger.Info("Setting up event handlers")
 
-	// Set up an event handler for when Password resources change
-	passwordInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueuePassword,
+	// Set up an event handler for when Login resources change
+	loginInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueLogin,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueuePassword(new)
+			controller.enqueueLogin(new)
 		},
 	})
 
 	// Set up an event handler for when Secret resources change. This
 	// handler will lookup the owner of the given Secret, and if it is
-	// owned by a Password resource then the handler will enqueue that Password resource for
+	// owned by a Login resource then the handler will enqueue that Login resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling Secret resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handlePasswordObject,
+		AddFunc: controller.handleLoginObject,
 		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*corev1.Secret)
 			oldDepl := old.(*corev1.Secret)
@@ -109,27 +111,27 @@ func NewController(
 				// This section will skip calling handleObject() if they are the same.
 				return
 			}
-			controller.handlePasswordObject(new)
+			controller.handleLoginObject(new)
 		},
-		DeleteFunc: controller.handlePasswordObject,
+		DeleteFunc: controller.handleLoginObject,
 	})
 
-	// Set up an event handler for when Rotation resources change
-	rotationInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueuePassword,
+	// Set up an event handler for when sshKey resources change
+	sshkeyInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueLogin,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueuePassword(new)
+			controller.enqueueLogin(new)
 		},
 	})
 
 	// Set up an event handler for when Job resources change. This
 	// handler will lookup the owner of the given Job, and if it is
-	// owned by a Rotation resource then the handler will enqueue that Rotation resource for
+	// owned by a sshKey resource then the handler will enqueue that sshKey resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling Job resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleRotationObject,
+		AddFunc: controller.handlesshKeyObject,
 		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*batchv1.Job)
 			oldDepl := old.(*batchv1.Job)
@@ -139,9 +141,9 @@ func NewController(
 				// This section will skip calling handleObject() if they are the same.
 				return
 			}
-			controller.handleRotationObject(new)
+			controller.handlesshKeyObject(new)
 		},
-		DeleteFunc: controller.handleRotationObject,
+		DeleteFunc: controller.handlesshKeyObject,
 	})
 
 	return controller
