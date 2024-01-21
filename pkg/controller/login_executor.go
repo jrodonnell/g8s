@@ -97,7 +97,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 		// The Login resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("login '%s' in work queue no longer exists", key))
+			utilruntime.HandleError(fmt.Errorf("Login '%s' in work queue no longer exists", key))
 			return nil
 		}
 
@@ -106,14 +106,22 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 
 	backendName := login.ObjectMeta.Name
 	historyName := login.ObjectMeta.Name + "-history"
-	// Get the backend Secret and history Secret with the name specified in Login.ObjectMeta.Name
-	backend, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
-	history, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
+	// Get the backend Secret and history Secret with this namespace/name
+	backendFromLister, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
+	historyFromLister, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
+
+	backend := backendFromLister.DeepCopy()
+	history := historyFromLister.DeepCopy()
+
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return nil
+	}
 
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")
-		g8sPw := g8s.PasswordWithBackend(login.Spec.Password)
+		g8sPw := g8s.PasswordWithHistory(login.Spec.Password)
 		g8sPwContent := g8sPw.Rotate()
 		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newLoginBackendSecret(login, g8sPwContent["password-0"]), metav1.CreateOptions{})
 		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newPasswordHistorySecret(login, g8sPwContent), metav1.CreateOptions{})

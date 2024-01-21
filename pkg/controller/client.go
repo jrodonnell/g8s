@@ -28,8 +28,8 @@ type Client struct {
 	loginsSynced cache.InformerSynced
 
 	// listers for our custom types
-	sshkeysLister listers.SSHKeyPairLister
-	sshkeysSynced cache.InformerSynced
+	sshKeyPairsLister listers.SSHKeyPairLister
+	sshKeyPairsSynced cache.InformerSynced
 	// listers for k8s types owned by our custom types
 	secretsLister secretslisters.SecretLister
 	secretsSynced cache.InformerSynced

@@ -13,27 +13,20 @@ type Gate interface {
 	Rotate() map[string]string
 }
 
-type passwordBackend struct {
-	content string
-	history []string
-}
+type history []string
 
 type Password struct {
 	v1alpha1.PasswordSpec
-	passwordBackend
+	history
 }
 
-func PasswordWithBackend(p *v1alpha1.PasswordSpec) Password {
+func PasswordWithHistory(p *v1alpha1.PasswordSpec) Password {
 	return Password{
 		*p,
-		passwordBackend{
-			content: "",
-			history: []string{},
-		},
+		[]string{},
 	}
 }
 
-// Answer.Content.(string)
 func (pw Password) Generate() map[string]string {
 	settings := password.Settings{
 		Length:       int(pw.Length),
@@ -61,23 +54,15 @@ func (pw Password) Rotate() map[string]string {
 	return newData
 }
 
-type sshKeyPairBackend struct {
-	content map[string]string
-	history []string
-}
-
 type SSHKeyPair struct {
 	v1alpha1.SSHKeyPair
-	sshKeyPairBackend
+	history
 }
 
-func SSHKeyPairWithBackend(s *v1alpha1.SSHKeyPair) SSHKeyPair {
+func SSHKeyPairWithHistory(s *v1alpha1.SSHKeyPair) SSHKeyPair {
 	return SSHKeyPair{
 		*s,
-		sshKeyPairBackend{
-			content: map[string]string{},
-			history: []string{},
-		},
+		[]string{},
 	}
 }
 

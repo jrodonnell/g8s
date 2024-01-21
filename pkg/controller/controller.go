@@ -42,7 +42,7 @@ func NewController(
 	kubeClientset kubernetes.Interface,
 	g8sClientset clientset.Interface,
 	loginInformer informers.LoginInformer,
-	sshkeyInformer informers.SSHKeyPairInformer,
+	sshKeyPairInformer informers.SSHKeyPairInformer,
 	secretInformer secretinformers.SecretInformer,
 	jobInformer jobinformers.JobInformer) *Controller {
 
@@ -66,21 +66,21 @@ func NewController(
 
 	controller := &Controller{
 		Client: Client{
-			kubeClientset:  kubeClientset,
-			g8sClientset:   g8sClientset,
-			loginInformer:  loginInformer,
-			secretInformer: secretInformer,
-			loginsLister:   loginInformer.Lister(),
-			loginsSynced:   loginInformer.Informer().HasSynced,
-			sshkeysLister:  sshkeyInformer.Lister(),
-			sshkeysSynced:  sshkeyInformer.Informer().HasSynced,
-			secretsLister:  secretInformer.Lister(),
-			secretsSynced:  secretInformer.Informer().HasSynced,
-			recorder:       recorder,
+			kubeClientset:     kubeClientset,
+			g8sClientset:      g8sClientset,
+			loginInformer:     loginInformer,
+			secretInformer:    secretInformer,
+			loginsLister:      loginInformer.Lister(),
+			loginsSynced:      loginInformer.Informer().HasSynced,
+			sshKeyPairsLister: sshKeyPairInformer.Lister(),
+			sshKeyPairsSynced: sshKeyPairInformer.Informer().HasSynced,
+			secretsLister:     secretInformer.Lister(),
+			secretsSynced:     secretInformer.Informer().HasSynced,
+			recorder:          recorder,
 		},
 		Executor: Executor{
-			loginWorkqueue:  workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
-			sshKeyWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
+			loginWorkqueue:      workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
+			sshKeyPairWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
 		},
 	}
 
@@ -116,8 +116,8 @@ func NewController(
 		DeleteFunc: controller.handleLoginObject,
 	})
 
-	// Set up an event handler for when sshKey resources change
-	sshkeyInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	// Set up an event handler for when sshKeyPair resources change
+	sshKeyPairInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueLogin,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueLogin(new)
@@ -126,12 +126,12 @@ func NewController(
 
 	// Set up an event handler for when Job resources change. This
 	// handler will lookup the owner of the given Job, and if it is
-	// owned by a sshKey resource then the handler will enqueue that sshKey resource for
+	// owned by a sshKeyPair resource then the handler will enqueue that sshKeyPair resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling Job resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handlesshKeyObject,
+		AddFunc: controller.handlesshKeyPairObject,
 		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*batchv1.Job)
 			oldDepl := old.(*batchv1.Job)
@@ -141,9 +141,9 @@ func NewController(
 				// This section will skip calling handleObject() if they are the same.
 				return
 			}
-			controller.handlesshKeyObject(new)
+			controller.handlesshKeyPairObject(new)
 		},
-		DeleteFunc: controller.handlesshKeyObject,
+		DeleteFunc: controller.handlesshKeyPairObject,
 	})
 
 	return controller

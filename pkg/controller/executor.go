@@ -33,8 +33,8 @@ type Executor struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
-	loginWorkqueue  workqueue.RateLimitingInterface
-	sshKeyWorkqueue workqueue.RateLimitingInterface
+	loginWorkqueue      workqueue.RateLimitingInterface
+	sshKeyPairWorkqueue workqueue.RateLimitingInterface
 }
 
 // Run will set up the event handlers for types we are interested in, as well
