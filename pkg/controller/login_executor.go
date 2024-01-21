@@ -113,19 +113,19 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")
-		g8sPw := g8s.LoginWithBackend(login)
+		g8sPw := g8s.PasswordWithBackend(login.Spec.Password)
 		g8sPwContent := g8sPw.Rotate()
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newBackendSecret(login, g8sPwContent["login-0"]), metav1.CreateOptions{})
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newHistorySecret(login, g8sPwContent), metav1.CreateOptions{})
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newLoginBackendSecret(login, g8sPwContent["password-0"]), metav1.CreateOptions{})
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newPasswordHistorySecret(login, g8sPwContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
 		pwbyte := history.Data["login-0"]
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newBackendSecret(login, string(pwbyte)), metav1.CreateOptions{})
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newLoginBackendSecret(login, string(pwbyte)), metav1.CreateOptions{})
 	} else if errors.IsNotFound(herr) { // backend exists but history dne, rebuild history from backend
 		logger.V(4).Info("Create history Secret resources from backend")
 		pwbyte := backend.Data["login"]
 		pwmap := map[string]string{"login-0": string(pwbyte)}
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newHistorySecret(login, pwmap), metav1.CreateOptions{})
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newPasswordHistorySecret(login, pwmap), metav1.CreateOptions{})
 	} else {
 		logger.V(4).Info("Secret resources for history and backend exist")
 	}
@@ -229,16 +229,16 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
-// newSecret creates a new Secret for a Login resource which contains the actual login.
+// newLoginBackendSecret creates a new Secret for a Login resource which contains the actual login.
 // It also sets the appropriate OwnerReferences on the resource so handleLoginObject can discover
 // the Login resource that 'owns' it.
-func newBackendSecret(pw *v1alpha1.Login, pwstr string) *corev1.Secret {
+func newLoginBackendSecret(l *v1alpha1.Login, pwstr string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pw.ObjectMeta.Name,
-			Namespace: pw.ObjectMeta.Namespace,
+			Name:      l.ObjectMeta.Name,
+			Namespace: l.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pw, v1alpha1.SchemeGroupVersion.WithKind("Login")),
+				*metav1.NewControllerRef(l, v1alpha1.SchemeGroupVersion.WithKind("Login")),
 			},
 			Annotations: map[string]string{
 				"controller": "g8s",
@@ -246,23 +246,24 @@ func newBackendSecret(pw *v1alpha1.Login, pwstr string) *corev1.Secret {
 		},
 		Immutable: boolPtr(true),
 		StringData: map[string]string{
-			"login": pwstr,
+			"username": l.Spec.Username,
+			"password": pwstr,
 		},
 		Type: "Opaque",
 	}
 }
 
-// newHistory creates a new Secret for a Login resource which contains the login's history.
+// newPasswordHistorySecret creates a new Secret for a Login resource which contains the password's history.
 // It also sets the appropriate OwnerReferences on the resource so handleLoginObject can discover
 // the Login resource that 'owns' it.
-func newHistorySecret(pw *v1alpha1.Login, pwhist map[string]string) *corev1.Secret {
+func newPasswordHistorySecret(l *v1alpha1.Login, pwhist map[string]string) *corev1.Secret {
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pw.ObjectMeta.Name + "-history",
-			Namespace: pw.ObjectMeta.Namespace,
+			Name:      l.ObjectMeta.Name + "-history",
+			Namespace: l.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pw, v1alpha1.SchemeGroupVersion.WithKind("Login")),
+				*metav1.NewControllerRef(l, v1alpha1.SchemeGroupVersion.WithKind("Login")),
 			},
 			Annotations: map[string]string{
 				"controller": "g8s",

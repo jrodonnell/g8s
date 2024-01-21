@@ -20,7 +20,7 @@ type Client struct {
 
 	// Informers for each type, just to expose for access
 	loginInformer  informers.LoginInformer
-	sshKeyInformer informers.SSHKeyInformer
+	sshKeyInformer informers.SSHKeyPairInformer
 	secretInformer secretinformers.SecretInformer
 
 	// listers for our custom types
@@ -28,7 +28,7 @@ type Client struct {
 	loginsSynced cache.InformerSynced
 
 	// listers for our custom types
-	sshkeysLister listers.SSHKeyLister
+	sshkeysLister listers.SSHKeyPairLister
 	sshkeysSynced cache.InformerSynced
 	// listers for k8s types owned by our custom types
 	secretsLister secretslisters.SecretLister

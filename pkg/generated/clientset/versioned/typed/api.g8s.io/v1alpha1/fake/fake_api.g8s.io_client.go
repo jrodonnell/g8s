@@ -31,8 +31,8 @@ func (c *FakeApiV1alpha1) Logins(namespace string) v1alpha1.LoginInterface {
 	return &FakeLogins{c, namespace}
 }
 
-func (c *FakeApiV1alpha1) SSHKeys(namespace string) v1alpha1.SSHKeyInterface {
-	return &FakeSSHKeys{c, namespace}
+func (c *FakeApiV1alpha1) SSHKeyPairs(namespace string) v1alpha1.SSHKeyPairInterface {
+	return &FakeSSHKeyPairs{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

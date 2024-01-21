@@ -20,13 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type SSHKeyType string
-
-const (
-	RSA     SSHKeyType = "rsa"
-	Ed25519 SSHKeyType = "ed25519"
-)
-
 // +genclient
 // +k8s:register-gen
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -43,13 +36,16 @@ type Login struct {
 
 // LoginSpec defines the desired state of Login
 type LoginSpec struct {
-	Length   uint8         `json:"length,omitempty"`
+	Username string        `json:"username,omitempty"`
 	Password *PasswordSpec `json:"password,omitempty"`
 }
 
 // PasswordSpec defines the desired state of Password
 type PasswordSpec struct {
-	Length       uint8  `json:"length,omitempty"`
+	// +optional
+	Length uint8 `json:"length,omitempty"`
+
+	// +optional
 	CharacterSet string `json:"characterset,omitempty"`
 }
 
@@ -66,36 +62,44 @@ type LoginList struct {
 	Items           []Login `json:"items"`
 }
 
+type SSHKeyPairType string
+
+const (
+	RSA     SSHKeyPairType = "rsa"
+	Ed25519 SSHKeyPairType = "ed25519"
+)
+
 // +genclient
 // +k8s:register-gen
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// SSHKey is the Schema for the passwords API
-type SSHKey struct {
+// SSHKeyPair is the Schema for the passwords API
+type SSHKeyPair struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SSHKeySpec   `json:"spec,omitempty"`
-	Status SSHKeyStatus `json:"status,omitempty"`
+	Spec   SSHKeyPairSpec   `json:"spec,omitempty"`
+	Status SSHKeyPairStatus `json:"status,omitempty"`
 }
 
-// SSHKeySpec defines the desired state of SSHKey
-type SSHKeySpec struct {
-	BitSize    int        `json:"bitsize,omitempty"`
-	KeyType    SSHKeyType `json:"keytype,omitempty"`
-	Passphrase string     `json:"passphrase,omitempty"`
+// SSHKeyPairSpec defines the desired state of SSHKeyPair
+type SSHKeyPairSpec struct {
+	// +optional
+	BitSize int `json:"bitsize,omitempty"`
+
+	KeyType SSHKeyPairType `json:"keytype,omitempty"`
 }
 
-// SSHKeyStatus defines the observed state of SSHKey
-type SSHKeyStatus struct {
+// SSHKeyPairStatus defines the observed state of SSHKeyPair
+type SSHKeyPairStatus struct {
 	Ready bool `json:"ready"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// SSHKeyList contains a list of SSHKey
-type SSHKeyList struct {
+// SSHKeyPairList contains a list of SSHKeyPair
+type SSHKeyPairList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SSHKey `json:"items"`
+	Items           []SSHKeyPair `json:"items"`
 }

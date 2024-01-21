@@ -60,7 +60,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	// Launch two workers to process At resources
 	for i := 0; i < workers; i++ {
 		go wait.UntilWithContext(ctx, c.runLoginWorker, time.Second)
-		go wait.UntilWithContext(ctx, c.runSSHKeyWorker, time.Second)
+		go wait.UntilWithContext(ctx, c.runSSHKeyPairWorker, time.Second)
 	}
 
 	logger.Info("Started workers")

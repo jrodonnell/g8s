@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// SSHKeyInformer provides access to a shared informer and lister for
-// SSHKeys.
-type SSHKeyInformer interface {
+// SSHKeyPairInformer provides access to a shared informer and lister for
+// SSHKeyPairs.
+type SSHKeyPairInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.SSHKeyLister
+	Lister() v1alpha1.SSHKeyPairLister
 }
 
-type sSHKeyInformer struct {
+type sSHKeyPairInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewSSHKeyInformer constructs a new informer for SSHKey type.
+// NewSSHKeyPairInformer constructs a new informer for SSHKeyPair type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewSSHKeyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredSSHKeyInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewSSHKeyPairInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredSSHKeyPairInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredSSHKeyInformer constructs a new informer for SSHKey type.
+// NewFilteredSSHKeyPairInformer constructs a new informer for SSHKeyPair type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredSSHKeyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredSSHKeyPairInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().SSHKeys(namespace).List(context.TODO(), options)
+				return client.ApiV1alpha1().SSHKeyPairs(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().SSHKeys(namespace).Watch(context.TODO(), options)
+				return client.ApiV1alpha1().SSHKeyPairs(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&apig8siov1alpha1.SSHKey{},
+		&apig8siov1alpha1.SSHKeyPair{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *sSHKeyInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredSSHKeyInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *sSHKeyPairInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredSSHKeyPairInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *sSHKeyInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apig8siov1alpha1.SSHKey{}, f.defaultInformer)
+func (f *sSHKeyPairInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apig8siov1alpha1.SSHKeyPair{}, f.defaultInformer)
 }
 
-func (f *sSHKeyInformer) Lister() v1alpha1.SSHKeyLister {
-	return v1alpha1.NewSSHKeyLister(f.Informer().GetIndexer())
+func (f *sSHKeyPairInformer) Lister() v1alpha1.SSHKeyPairLister {
+	return v1alpha1.NewSSHKeyPairLister(f.Informer().GetIndexer())
 }

@@ -19,4 +19,4 @@ package v1alpha1
 
 type LoginExpansion interface{}
 
-type SSHKeyExpansion interface{}
+type SSHKeyPairExpansion interface{}

@@ -25,10 +25,10 @@ type LoginListerExpansion interface{}
 // LoginNamespaceLister.
 type LoginNamespaceListerExpansion interface{}
 
-// SSHKeyListerExpansion allows custom methods to be added to
-// SSHKeyLister.
-type SSHKeyListerExpansion interface{}
+// SSHKeyPairListerExpansion allows custom methods to be added to
+// SSHKeyPairLister.
+type SSHKeyPairListerExpansion interface{}
 
-// SSHKeyNamespaceListerExpansion allows custom methods to be added to
-// SSHKeyNamespaceLister.
-type SSHKeyNamespaceListerExpansion interface{}
+// SSHKeyPairNamespaceListerExpansion allows custom methods to be added to
+// SSHKeyPairNamespaceLister.
+type SSHKeyPairNamespaceListerExpansion interface{}

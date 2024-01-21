@@ -25,8 +25,8 @@ import (
 type Interface interface {
 	// Logins returns a LoginInformer.
 	Logins() LoginInformer
-	// SSHKeys returns a SSHKeyInformer.
-	SSHKeys() SSHKeyInformer
+	// SSHKeyPairs returns a SSHKeyPairInformer.
+	SSHKeyPairs() SSHKeyPairInformer
 }
 
 type version struct {
@@ -45,7 +45,7 @@ func (v *version) Logins() LoginInformer {
 	return &loginInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// SSHKeys returns a SSHKeyInformer.
-func (v *version) SSHKeys() SSHKeyInformer {
-	return &sSHKeyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// SSHKeyPairs returns a SSHKeyPairInformer.
+func (v *version) SSHKeyPairs() SSHKeyPairInformer {
+	return &sSHKeyPairInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

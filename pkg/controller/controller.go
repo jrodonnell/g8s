@@ -42,7 +42,7 @@ func NewController(
 	kubeClientset kubernetes.Interface,
 	g8sClientset clientset.Interface,
 	loginInformer informers.LoginInformer,
-	sshkeyInformer informers.SSHKeyInformer,
+	sshkeyInformer informers.SSHKeyPairInformer,
 	secretInformer secretinformers.SecretInformer,
 	jobInformer jobinformers.JobInformer) *Controller {
 
@@ -80,7 +80,7 @@ func NewController(
 		},
 		Executor: Executor{
 			loginWorkqueue:  workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
-			sshKeyWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKey"),
+			sshKeyWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
 		},
 	}
 

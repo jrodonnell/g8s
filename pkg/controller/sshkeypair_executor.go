@@ -16,7 +16,7 @@ import (
 // runsshKeyWorker is a long-running function that will continually call the
 // processNextsshKeyWorkItem function in order to read and process a message on the
 // workqueue.
-func (c *Controller) runSSHKeyWorker(ctx context.Context) {
+func (c *Controller) runSSHKeyPairWorker(ctx context.Context) {
 	for c.processNextsshKeyWorkItem(ctx) {
 	}
 }
@@ -91,7 +91,7 @@ func (c *Controller) sshKeySyncHandler(ctx context.Context, key string) error {
 	}
 
 	// Get the sshKey resource with this namespace/name
-	sshKey, err := c.sshkeysLister.SSHKeys(namespace).Get(name)
+	sshKey, err := c.sshkeysLister.SSHKeyPairs(namespace).Get(name)
 	if err != nil {
 		// The sshKey resource may no longer exist, in which case we stop
 		// processing.
@@ -157,7 +157,7 @@ func (c *Controller) sshKeySyncHandler(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *Controller) updatesshKeytatus(sshKey *v1alpha1.SSHKey, secret *corev1.Secret) error {
+func (c *Controller) updatesshKeytatus(sshKey *v1alpha1.SSHKeyPair, secret *corev1.Secret) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -166,7 +166,7 @@ func (c *Controller) updatesshKeytatus(sshKey *v1alpha1.SSHKey, secret *corev1.S
 	// we must use Update instead of UpdateStatus to update the Status block of the sshKey resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.Client.g8sClientset.ApiV1alpha1().SSHKeys(sshKey.Namespace).UpdateStatus(context.TODO(), sshKeyCopy, metav1.UpdateOptions{})
+	_, err := c.Client.g8sClientset.ApiV1alpha1().SSHKeyPairs(sshKey.Namespace).UpdateStatus(context.TODO(), sshKeyCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -213,7 +213,7 @@ func (c *Controller) handlesshKeyObject(obj interface{}) {
 			return
 		}
 
-		sshKey, err := c.sshkeysLister.SSHKeys(object.GetNamespace()).Get(ownerRef.Name)
+		sshKey, err := c.sshkeysLister.SSHKeyPairs(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "sshKey", ownerRef.Name)
 			return
