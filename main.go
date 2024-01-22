@@ -61,7 +61,6 @@ func main() {
 		g8sInformerFactory.Api().V1alpha1().Logins(),
 		g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
 		kubeInformerFactory.Core().V1().Secrets(),
-		kubeInformerFactory.Batch().V1().Jobs(),
 	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
@@ -79,17 +78,3 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }
-
-//func main() {
-// how to call config package to read a gates.yaml
-//
-//  content, _ := config.Parse(config.DefaultFile)
-// payload, _ := json.Marshal(content)
-// fmt.Println(string(payload))
-
-// how to call legacy qanda pkg
-//
-// q, _ := qanda.NewQuestion(qanda.PGPKeyPair, qanda.Daimon)
-// a, _ := q.Ask()
-// fmt.Println(a.Content, reflect.TypeOf(a.Content))
-//}

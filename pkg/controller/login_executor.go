@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
 	"github.com/the-gizmo-dojo/g8s/pkg/g8s"
@@ -104,19 +105,34 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
+	// DeepCopy for safety
+	// FUCK ME THIS CAUSES PROBLEMS!!!!!
+	//login := loginFromLister.DeepCopy()
+
+	//fmt.Println(login.TypeMeta)
+	//fmt.Println(login.Spec)
+
 	backendName := login.ObjectMeta.Name
 	historyName := login.ObjectMeta.Name + "-history"
 	// Get the backend Secret and history Secret with this namespace/name
-	backendFromLister, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
-	historyFromLister, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
+	backend, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
+	history, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
 
-	backend := backendFromLister.DeepCopy()
-	history := historyFromLister.DeepCopy()
+	// DeepCopy for safety
+	// FUCK ME THIS CAUSES PROBLEMS!!!!!
+	//backend := backendFromLister.DeepCopy()
+	//history := historyFromLister.DeepCopy()
 
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return nil
 	}
+
+	reflect.TypeOf(berr)
+	reflect.TypeOf(herr)
+	reflect.TypeOf(backend)
+	reflect.TypeOf(history)
+	reflect.TypeOf(logger)
 
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
@@ -161,6 +177,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	}
 
 	c.recorder.Event(login, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+
 	return nil
 }
 

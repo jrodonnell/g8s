@@ -4,21 +4,21 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: passwords.api.g8s.io
+  name: sshkeypairs.api.g8s.io
 spec:
   group: api.g8s.io
   names:
-    kind: Password
-    listKind: PasswordList
-    plural: passwords
-    singular: password
-    shortNames: ["pw"]
+    kind: SSHKeyPair
+    listKind: SSHKeyPairList
+    plural: sshkeypairs
+    singular: sshkeypair
+    shortNames: ["ssh"]
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Password is the Schema for the passwords API
+        description: SSHKeyPair is the Schema for the sshkeypairs API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,15 +33,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: PasswordSpec defines the desired state of Password
+            description: SSHKeyPairSpec defines the desired state of SSHKeyPair
             properties:
-              characterset:
-                type: string
-              length:
+              bitsize:
                 type: integer
+              keytype:
+                type: string
             type: object
           status:
-            description: PasswordStatus defines the observed state of Password
+            description: SSHKeyPairStatus defines the observed state of SSHKeyPair
             properties:
               ready:
                 type: boolean

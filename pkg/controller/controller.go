@@ -7,7 +7,7 @@ import (
 	"golang.org/x/time/rate"
 
 	//	"github.com/rancher/wrangler/pkg/crd"
-	batchv1 "k8s.io/api/batch/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
-	jobinformers "k8s.io/client-go/informers/batch/v1"
 	secretinformers "k8s.io/client-go/informers/core/v1"
 
 	//	g8sv1alpha1 "github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
@@ -43,8 +42,7 @@ func NewController(
 	g8sClientset clientset.Interface,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
-	secretInformer secretinformers.SecretInformer,
-	jobInformer jobinformers.JobInformer) *Controller {
+	secretInformer secretinformers.SecretInformer) *Controller {
 
 	logger := klog.FromContext(ctx)
 
@@ -86,11 +84,19 @@ func NewController(
 
 	logger.Info("Setting up event handlers")
 
-	// Set up an event handler for when Login resources change
+	// Set up an event handler for when login resources change
 	loginInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueLogin,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueLogin(new)
+		},
+	})
+
+	// Set up an event handler for when sshkeypair resources change
+	sshKeyPairInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueSSHKeyPair,
+		UpdateFunc: func(old, new interface{}) {
+			controller.enqueueSSHKeyPair(new)
 		},
 	})
 
@@ -116,35 +122,26 @@ func NewController(
 		DeleteFunc: controller.handleLoginObject,
 	})
 
-	// Set up an event handler for when sshKeyPair resources change
-	sshKeyPairInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueLogin,
-		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueLogin(new)
-		},
-	})
-
-	// Set up an event handler for when Job resources change. This
-	// handler will lookup the owner of the given Job, and if it is
-	// owned by a sshKeyPair resource then the handler will enqueue that sshKeyPair resource for
+	// Set up an event handler for when Secret resources change. This
+	// handler will lookup the owner of the given Secret, and if it is
+	// owned by a SSHKeyPair resource then the handler will enqueue that SSHKeyPair resource for
 	// processing. This way, we don't need to implement custom logic for
-	// handling Job resources. More info on this pattern:
+	// handling Secret resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handlesshKeyPairObject,
+	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleSSHKeyPairObject,
 		UpdateFunc: func(old, new interface{}) {
-			newDepl := new.(*batchv1.Job)
-			oldDepl := old.(*batchv1.Job)
+			newDepl := new.(*corev1.Secret)
+			oldDepl := old.(*corev1.Secret)
 			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
 				// Periodic resync will send update events for all known Secrets.
 				// Two different versions of the same Secret will always have different ResourceVersions.
 				// This section will skip calling handleObject() if they are the same.
 				return
 			}
-			controller.handlesshKeyPairObject(new)
+			controller.handleSSHKeyPairObject(new)
 		},
-		DeleteFunc: controller.handlesshKeyPairObject,
+		DeleteFunc: controller.handleSSHKeyPairObject,
 	})
-
 	return controller
 }

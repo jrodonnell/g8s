@@ -1,0 +1,14 @@
+apiVersion: api.g8s.io/v1alpha1
+kind: SSHKeyPair
+metadata:
+  name: riley-ed25519
+spec:
+  keytype: "ed25519"
+---
+apiVersion: api.g8s.io/v1alpha1
+kind: SSHKeyPair
+metadata:
+  name: root-rsa
+spec:
+  bitsize: 4096
+  keytype: "rsa"

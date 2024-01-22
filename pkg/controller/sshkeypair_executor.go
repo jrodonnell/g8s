@@ -122,19 +122,22 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")
-		g8sPw := g8s.SSHKeyPairWithBackend(sshKeyPair)
-		g8sPwContent := g8sPw.Rotate()
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, g8sPwContent["sshKeyPair-0"]), metav1.CreateOptions{})
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, g8sPwContent), metav1.CreateOptions{})
+		g8sKp := g8s.SSHKeyPairWithHistory(sshKeyPair)
+		g8sKpContent := g8sKp.Rotate()
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, g8sKpContent), metav1.CreateOptions{})
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, g8sKpContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
-		pwbyte := history.Data["sshKeyPair-0"]
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, string(pwbyte)), metav1.CreateOptions{})
+		kp := make(map[string]string)
+		kp["ssh.pub"] = string(history.Data["ssh.pub-0"])
+		kp["ssh.key"] = string(history.Data["ssh.key-0"])
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, kp), metav1.CreateOptions{})
 	} else if errors.IsNotFound(herr) { // backend exists but history dne, rebuild history from backend
 		logger.V(4).Info("Create history Secret resources from backend")
-		pwbyte := backend.Data["sshKeyPair"]
-		pwmap := map[string]string{"sshKeyPair-0": string(pwbyte)}
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, pwmap), metav1.CreateOptions{})
+		kp := make(map[string]string)
+		kp["ssh.pub-0"] = string(backend.Data["ssh.pub"])
+		kp["ssh.key-0"] = string(backend.Data["ssh.key"])
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, kp), metav1.CreateOptions{})
 	} else {
 		logger.V(4).Info("Secret resources for history and backend exist")
 	}
@@ -155,7 +158,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 
 	// Finally, we update the status block of the sshKeyPair resource to reflect the
 	// current state of the world
-	err = c.updatesshKeyPairtatus(sshKeyPair, backend)
+	err = c.updateSSHKeyPairtatus(sshKeyPair, backend)
 	if err != nil {
 		return err
 	}
@@ -164,7 +167,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	return nil
 }
 
-func (c *Controller) updatesshKeyPairtatus(sshKeyPair *v1alpha1.SSHKeyPair, secret *corev1.Secret) error {
+func (c *Controller) updateSSHKeyPairtatus(sshKeyPair *v1alpha1.SSHKeyPair, secret *corev1.Secret) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -180,7 +183,7 @@ func (c *Controller) updatesshKeyPairtatus(sshKeyPair *v1alpha1.SSHKeyPair, secr
 // enqueuesshKeyPair takes a sshKeyPair resource and converts it into a namespace/name
 // string which is then put onto the workqueue. This method should *not* be
 // passed resources of any type other than sshKeyPair.
-func (c *Controller) enqueuesshKeyPair(obj any) {
+func (c *Controller) enqueueSSHKeyPair(obj any) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -195,7 +198,7 @@ func (c *Controller) enqueuesshKeyPair(obj any) {
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that sshKeyPair resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (c *Controller) handlesshKeyPairObject(obj interface{}) {
+func (c *Controller) handleSSHKeyPairObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	logger := klog.FromContext(context.Background())
@@ -226,7 +229,50 @@ func (c *Controller) handlesshKeyPairObject(obj interface{}) {
 			return
 		}
 
-		c.enqueuesshKeyPair(sshKeyPair)
+		c.enqueueSSHKeyPair(sshKeyPair)
 		return
+	}
+}
+
+// newSSHKeyPairBackendSecret creates a new Secret for a SSHKeyPair resource which contains the actual login.
+// It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
+// the SSHKeyPair resource that 'owns' it.
+func newSSHKeyPairBackendSecret(ssh *v1alpha1.SSHKeyPair, kp map[string]string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ssh.ObjectMeta.Name,
+			Namespace: ssh.ObjectMeta.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(ssh, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
+			},
+			Annotations: map[string]string{
+				"controller": "g8s",
+			},
+		},
+		Immutable:  boolPtr(true),
+		StringData: kp,
+		Type:       "Opaque",
+	}
+}
+
+// newSSHKeyPairHistorySecret creates a new Secret for a SSHKeyPair resource which contains the password's history.
+// It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
+// the SSHKeyPair resource that 'owns' it.
+func newSSHKeyPairHistorySecret(l *v1alpha1.SSHKeyPair, pwhist map[string]string) *corev1.Secret {
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      l.ObjectMeta.Name + "-history",
+			Namespace: l.ObjectMeta.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(l, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
+			},
+			Annotations: map[string]string{
+				"controller": "g8s",
+			},
+		},
+		Immutable:  boolPtr(true),
+		StringData: pwhist,
+		Type:       "Opaque",
 	}
 }
