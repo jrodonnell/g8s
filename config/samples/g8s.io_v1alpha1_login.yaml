@@ -4,8 +4,9 @@ metadata:
   name: riley
 spec:
   username: riley
-  length: 12
-  characterset: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  password:
+    length: 12
+    characterset: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 ---
 apiVersion: api.g8s.io/v1alpha1
 kind: Login
@@ -13,5 +14,6 @@ metadata:
   name: root
 spec:
   username: root
-  length: 32
-  characterset: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()<>?{}[]-_=+\/|'
+  password:
+    length: 32
+    characterset: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()<>?{}[]-_=+\/|'

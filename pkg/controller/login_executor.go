@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
 	"github.com/the-gizmo-dojo/g8s/pkg/g8s"
@@ -93,7 +92,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	}
 
 	// Get the Login resource with this namespace/name
-	login, err := c.loginsLister.Logins(namespace).Get(name)
+	loginFromLister, err := c.loginsLister.Logins(namespace).Get(name)
 	if err != nil {
 		// The Login resource may no longer exist, in which case we stop
 		// processing.
@@ -106,33 +105,22 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	}
 
 	// DeepCopy for safety
-	// FUCK ME THIS CAUSES PROBLEMS!!!!!
-	//login := loginFromLister.DeepCopy()
-
-	//fmt.Println(login.TypeMeta)
-	//fmt.Println(login.Spec)
+	login := loginFromLister.DeepCopy()
 
 	backendName := login.ObjectMeta.Name
 	historyName := login.ObjectMeta.Name + "-history"
 	// Get the backend Secret and history Secret with this namespace/name
-	backend, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
-	history, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
+	backendFromLister, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
+	historyFromLister, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
 
 	// DeepCopy for safety
-	// FUCK ME THIS CAUSES PROBLEMS!!!!!
-	//backend := backendFromLister.DeepCopy()
-	//history := historyFromLister.DeepCopy()
+	backend := backendFromLister.DeepCopy()
+	history := historyFromLister.DeepCopy()
 
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return nil
 	}
-
-	reflect.TypeOf(berr)
-	reflect.TypeOf(herr)
-	reflect.TypeOf(backend)
-	reflect.TypeOf(history)
-	reflect.TypeOf(logger)
 
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
@@ -143,12 +131,12 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newPasswordHistorySecret(login, g8sPwContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
-		pwbyte := history.Data["login-0"]
+		pwbyte := history.Data["password-0"]
 		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newLoginBackendSecret(login, string(pwbyte)), metav1.CreateOptions{})
 	} else if errors.IsNotFound(herr) { // backend exists but history dne, rebuild history from backend
 		logger.V(4).Info("Create history Secret resources from backend")
-		pwbyte := backend.Data["login"]
-		pwmap := map[string]string{"login-0": string(pwbyte)}
+		pwbyte := backend.Data["password"]
+		pwmap := map[string]string{"password-0": string(pwbyte)}
 		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, newPasswordHistorySecret(login, pwmap), metav1.CreateOptions{})
 	} else {
 		logger.V(4).Info("Secret resources for history and backend exist")
@@ -260,7 +248,7 @@ func boolPtr(b bool) *bool {
 func newLoginBackendSecret(l *v1alpha1.Login, pwstr string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      l.ObjectMeta.Name,
+			Name:      "login-" + l.ObjectMeta.Name,
 			Namespace: l.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(l, v1alpha1.SchemeGroupVersion.WithKind("Login")),
@@ -285,7 +273,7 @@ func newPasswordHistorySecret(l *v1alpha1.Login, pwhist map[string]string) *core
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      l.ObjectMeta.Name + "-history",
+			Name:      "login-" + l.ObjectMeta.Name + "-history",
 			Namespace: l.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(l, v1alpha1.SchemeGroupVersion.WithKind("Login")),

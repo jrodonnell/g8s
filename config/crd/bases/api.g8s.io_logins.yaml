@@ -12,7 +12,6 @@ spec:
     listKind: LoginList
     plural: logins
     singular: login
-    shortNames: ["login"]
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -35,12 +34,16 @@ spec:
           spec:
             description: LoginSpec defines the desired state of Login
             properties:
+              password:
+                description: PasswordSpec defines the desired state of Password
+                properties:
+                  characterset:
+                    type: string
+                  length:
+                    type: integer
+                type: object
               username:
                 type: string
-              characterset:
-                type: string
-              length:
-                type: integer
             type: object
           status:
             description: LoginStatus defines the observed state of Login

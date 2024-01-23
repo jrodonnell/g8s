@@ -124,14 +124,13 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		logger.V(4).Info("Create backend and history Secret resources")
 		g8sKp := g8s.SSHKeyPairWithHistory(sshKeyPair)
 		g8sKpContent := g8sKp.Rotate()
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, g8sKpContent), metav1.CreateOptions{})
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, g8sKpContent["ssh.pub-0"], g8sKpContent["ssh.key-0"]), metav1.CreateOptions{})
 		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, g8sKpContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
-		kp := make(map[string]string)
-		kp["ssh.pub"] = string(history.Data["ssh.pub-0"])
-		kp["ssh.key"] = string(history.Data["ssh.key-0"])
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, kp), metav1.CreateOptions{})
+		pub := string(history.Data["ssh.pub-0"])
+		key := string(history.Data["ssh.key-0"])
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, pub, key), metav1.CreateOptions{})
 	} else if errors.IsNotFound(herr) { // backend exists but history dne, rebuild history from backend
 		logger.V(4).Info("Create history Secret resources from backend")
 		kp := make(map[string]string)
@@ -237,10 +236,35 @@ func (c *Controller) handleSSHKeyPairObject(obj interface{}) {
 // newSSHKeyPairBackendSecret creates a new Secret for a SSHKeyPair resource which contains the actual login.
 // It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
 // the SSHKeyPair resource that 'owns' it.
-func newSSHKeyPairBackendSecret(ssh *v1alpha1.SSHKeyPair, kp map[string]string) *corev1.Secret {
+func newSSHKeyPairBackendSecret(ssh *v1alpha1.SSHKeyPair, pub, key string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ssh.ObjectMeta.Name,
+			Name:      "sshkeypair-" + ssh.ObjectMeta.Name,
+			Namespace: ssh.ObjectMeta.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(ssh, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
+			},
+			Annotations: map[string]string{
+				"controller": "g8s",
+			},
+		},
+		Immutable: boolPtr(true),
+		StringData: map[string]string{
+			"ssh.pub": pub,
+			"ssh.key": key,
+		},
+		Type: "Opaque",
+	}
+}
+
+// newSSHKeyPairHistorySecret creates a new Secret for a SSHKeyPair resource which contains the password's history.
+// It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
+// the SSHKeyPair resource that 'owns' it.
+func newSSHKeyPairHistorySecret(ssh *v1alpha1.SSHKeyPair, kphist map[string]string) *corev1.Secret {
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "sshkeypair-" + ssh.ObjectMeta.Name + "-history",
 			Namespace: ssh.ObjectMeta.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(ssh, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
@@ -250,29 +274,7 @@ func newSSHKeyPairBackendSecret(ssh *v1alpha1.SSHKeyPair, kp map[string]string) 
 			},
 		},
 		Immutable:  boolPtr(true),
-		StringData: kp,
-		Type:       "Opaque",
-	}
-}
-
-// newSSHKeyPairHistorySecret creates a new Secret for a SSHKeyPair resource which contains the password's history.
-// It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
-// the SSHKeyPair resource that 'owns' it.
-func newSSHKeyPairHistorySecret(l *v1alpha1.SSHKeyPair, pwhist map[string]string) *corev1.Secret {
-
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      l.ObjectMeta.Name + "-history",
-			Namespace: l.ObjectMeta.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(l, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
-			},
-			Annotations: map[string]string{
-				"controller": "g8s",
-			},
-		},
-		Immutable:  boolPtr(true),
-		StringData: pwhist,
+		StringData: kphist,
 		Type:       "Opaque",
 	}
 }
