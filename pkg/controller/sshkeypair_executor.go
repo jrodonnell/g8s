@@ -149,8 +149,16 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 
 	// If the Secret is not controlled by this sshKeyPair resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(backend, sshKeyPair) || !metav1.IsControlledBy(history, sshKeyPair) {
+	if !metav1.IsControlledBy(backend, sshKeyPair) {
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
+		c.recorder.Event(sshKeyPair, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf("%s", msg)
+	}
+
+	// If the Secret is not controlled by this sshKeyPair resource, we should log
+	// a warning to the event recorder and return error msg.
+	if !metav1.IsControlledBy(history, sshKeyPair) {
+		msg := fmt.Sprintf(MessageResourceExists, history.Name)
 		c.recorder.Event(sshKeyPair, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
 	}
@@ -158,6 +166,13 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	// Finally, we update the status block of the sshKeyPair resource to reflect the
 	// current state of the world
 	err = c.updateSSHKeyPairtatus(sshKeyPair, backend)
+	if err != nil {
+		return err
+	}
+
+	// Finally, we update the status block of the sshKeyPair resource to reflect the
+	// current state of the world
+	err = c.updateSSHKeyPairtatus(sshKeyPair, history)
 	if err != nil {
 		return err
 	}
