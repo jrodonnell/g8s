@@ -52,7 +52,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	// Wait for the caches to be synced before starting workers
 	logger.Info("Waiting for informer caches to sync")
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.loginsSynced, c.secretsSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.loginsSynced, c.sshKeyPairsSynced, c.secretsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 

@@ -151,7 +151,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 
 	// If the Secret is not controlled by this Login resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(backend, login) {
+	if !metav1.IsControlledBy(backend, login) || !metav1.IsControlledBy(history, login) {
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
 		c.recorder.Event(login, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)

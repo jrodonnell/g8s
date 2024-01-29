@@ -149,7 +149,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 
 	// If the Secret is not controlled by this sshKeyPair resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(backend, sshKeyPair) {
+	if !metav1.IsControlledBy(backend, sshKeyPair) || !metav1.IsControlledBy(history, sshKeyPair) {
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
 		c.recorder.Event(sshKeyPair, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
