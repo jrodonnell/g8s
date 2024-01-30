@@ -21,10 +21,10 @@ const (
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Secret already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Login"
+	MessageResourceExists = "Resource %q already exists and is not managed by Resource"
 	// MessageResourceSynced is the message used for an Event fired when a CR
 	// is synced successfully
-	MessageResourceSynced = "Login synced successfully"
+	MessageResourceSynced = "Resource synced successfully"
 )
 
 type Executor struct {
@@ -68,4 +68,9 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	logger.Info("Shutting down workers")
 
 	return nil
+}
+
+// Secret.Immutable requires a *bool, helper func to return that
+func boolPtr(b bool) *bool {
+	return &b
 }

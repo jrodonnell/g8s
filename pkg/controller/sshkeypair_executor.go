@@ -92,7 +92,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	}
 
 	// Get the sshKeyPair resource with this namespace/name
-	sshKeyPair, err := c.sshKeyPairsLister.SSHKeyPairs(namespace).Get(name)
+	sshKeyPairFromLister, err := c.sshKeyPairsLister.SSHKeyPairs(namespace).Get(name)
 	if err != nil {
 		// The sshKeyPair resource may no longer exist, in which case we stop
 		// processing.
@@ -104,13 +104,17 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		return err
 	}
 
-	backendName := sshKeyPair.ObjectMeta.Name
-	historyName := sshKeyPair.ObjectMeta.Name + "-history"
+	// DeepCopy for safety
+	sshKeyPair := sshKeyPairFromLister.DeepCopy()
+
+	backendName := "sshkeypair-" + sshKeyPair.ObjectMeta.Name
+	historyName := "sshkeypair-" + sshKeyPair.ObjectMeta.Name + "-history"
 
 	// Get the backend Secret and history Secret with this namespace/name
 	backendFromLister, berr := c.secretsLister.Secrets(sshKeyPair.Namespace).Get(backendName)
 	historyFromLister, herr := c.secretsLister.Secrets(sshKeyPair.Namespace).Get(historyName)
 
+	// DeepCopy for safety
 	backend := backendFromLister.DeepCopy()
 	history := historyFromLister.DeepCopy()
 
@@ -140,6 +144,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	} else {
 		logger.V(4).Info("Secret resources for history and backend exist")
 	}
+
 	// If an error occurs during Get/Create, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
@@ -153,11 +158,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
 		c.recorder.Event(sshKeyPair, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
-	}
-
-	// If the Secret is not controlled by this sshKeyPair resource, we should log
-	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(history, sshKeyPair) {
+	} else if !metav1.IsControlledBy(history, sshKeyPair) {
 		msg := fmt.Sprintf(MessageResourceExists, history.Name)
 		c.recorder.Event(sshKeyPair, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
@@ -165,14 +166,14 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 
 	// Finally, we update the status block of the sshKeyPair resource to reflect the
 	// current state of the world
-	err = c.updateSSHKeyPairtatus(sshKeyPair, backend)
+	err = c.updateSSHKeyPairStatus(sshKeyPair, backend)
 	if err != nil {
 		return err
 	}
 
 	// Finally, we update the status block of the sshKeyPair resource to reflect the
 	// current state of the world
-	err = c.updateSSHKeyPairtatus(sshKeyPair, history)
+	err = c.updateSSHKeyPairStatus(sshKeyPair, history)
 	if err != nil {
 		return err
 	}
@@ -181,11 +182,12 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	return nil
 }
 
-func (c *Controller) updateSSHKeyPairtatus(sshKeyPair *v1alpha1.SSHKeyPair, secret *corev1.Secret) error {
+func (c *Controller) updateSSHKeyPairStatus(sshKeyPair *v1alpha1.SSHKeyPair, secret *corev1.Secret) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	sshKeyPairCopy := sshKeyPair.DeepCopy()
+	sshKeyPairCopy.Status.Ready = true
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the sshKeyPair resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
@@ -194,7 +196,7 @@ func (c *Controller) updateSSHKeyPairtatus(sshKeyPair *v1alpha1.SSHKeyPair, secr
 	return err
 }
 
-// enqueuesshKeyPair takes a sshKeyPair resource and converts it into a namespace/name
+// enqueueSSHKeyPair takes a sshKeyPair resource and converts it into a namespace/name
 // string which is then put onto the workqueue. This method should *not* be
 // passed resources of any type other than sshKeyPair.
 func (c *Controller) enqueueSSHKeyPair(obj any) {
@@ -207,10 +209,10 @@ func (c *Controller) enqueueSSHKeyPair(obj any) {
 	c.sshKeyPairWorkqueue.Add(key)
 }
 
-// handlesshKeyPairObject will take any resource implementing metav1.Object and attempt
-// to find the sshKeyPair resource that 'owns' it. It does this by looking at the
+// handleSSHKeyPairObject will take any resource implementing metav1.Object and attempt
+// to find the SSHKeyPair resource that 'owns' it. It does this by looking at the
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
-// It then enqueues that sshKeyPair resource to be processed. If the object does not
+// It then enqueues that SSHKeyPair resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
 func (c *Controller) handleSSHKeyPairObject(obj interface{}) {
 	var object metav1.Object
@@ -231,15 +233,15 @@ func (c *Controller) handleSSHKeyPairObject(obj interface{}) {
 	}
 	logger.V(4).Info("Processing object", "object", klog.KObj(object))
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-		// If this object is not owned by a sshKeyPair, we should not do anything more
+		// If this object is not owned by a SSHKeyPair, we should not do anything more
 		// with it.
-		if ownerRef.Kind != "sshKeyPair" {
+		if ownerRef.Kind != "SSHKeyPair" {
 			return
 		}
 
 		sshKeyPair, err := c.sshKeyPairsLister.SSHKeyPairs(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "sshKeyPair", ownerRef.Name)
+			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "sshkeypair", ownerRef.Name)
 			return
 		}
 
@@ -272,7 +274,7 @@ func newSSHKeyPairBackendSecret(ssh *v1alpha1.SSHKeyPair, pub, key string) *core
 	}
 }
 
-// newSSHKeyPairHistorySecret creates a new Secret for a SSHKeyPair resource which contains the password's history.
+// newSSHKeyPairHistorySecret creates a new Secret for a SSHKeyPair resource which contains the sshkeypair's history.
 // It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
 // the SSHKeyPair resource that 'owns' it.
 func newSSHKeyPairHistorySecret(ssh *v1alpha1.SSHKeyPair, kphist map[string]string) *corev1.Secret {

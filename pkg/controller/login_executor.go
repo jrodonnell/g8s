@@ -107,8 +107,9 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	// DeepCopy for safety
 	login := loginFromLister.DeepCopy()
 
-	backendName := login.ObjectMeta.Name
-	historyName := login.ObjectMeta.Name + "-history"
+	backendName := "login-" + login.ObjectMeta.Name
+	historyName := "login-" + login.ObjectMeta.Name + "-history"
+
 	// Get the backend Secret and history Secret with this namespace/name
 	backendFromLister, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
 	historyFromLister, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
@@ -151,8 +152,12 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 
 	// If the Secret is not controlled by this Login resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(backend, login) || !metav1.IsControlledBy(history, login) {
+	if !metav1.IsControlledBy(backend, login) {
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
+		c.recorder.Event(login, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf("%s", msg)
+	} else if !metav1.IsControlledBy(history, login) {
+		msg := fmt.Sprintf(MessageResourceExists, history.Name)
 		c.recorder.Event(login, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
 	}
@@ -164,8 +169,14 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
-	c.recorder.Event(login, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	// Finally, we update the status block of the sshKeyPair resource to reflect the
+	// current state of the world
+	err = c.updateLoginStatus(login, history)
+	if err != nil {
+		return err
+	}
 
+	c.recorder.Event(login, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
@@ -235,11 +246,6 @@ func (c *Controller) handleLoginObject(obj interface{}) {
 		c.enqueueLogin(login)
 		return
 	}
-}
-
-// Secret.Immutable requires a *bool, helper func to return that
-func boolPtr(b bool) *bool {
-	return &b
 }
 
 // newLoginBackendSecret creates a new Secret for a Login resource which contains the actual login.
