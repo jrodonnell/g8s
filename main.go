@@ -61,6 +61,7 @@ func main() {
 		g8sInformerFactory.Api().V1alpha1().Logins(),
 		g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
 		kubeInformerFactory.Core().V1().Secrets(),
+		kubeInformerFactory.Rbac().V1().ClusterRoles(),
 	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())

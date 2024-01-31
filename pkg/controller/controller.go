@@ -6,9 +6,8 @@ import (
 
 	"golang.org/x/time/rate"
 
-	//	"github.com/rancher/wrangler/pkg/crd"
-
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -19,12 +18,11 @@ import (
 	"k8s.io/klog/v2"
 
 	secretinformers "k8s.io/client-go/informers/core/v1"
+	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
-	//	g8sv1alpha1 "github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
 	clientset "github.com/the-gizmo-dojo/g8s/pkg/generated/clientset/versioned"
 	g8sscheme "github.com/the-gizmo-dojo/g8s/pkg/generated/clientset/versioned/scheme"
 	informers "github.com/the-gizmo-dojo/g8s/pkg/generated/informers/externalversions/api.g8s.io/v1alpha1"
-	// listers "github.com/the-gizmo-dojo/g8s/pkg/generated/listers/api.g8s.io/v1alpha1"
 )
 
 const controllerAgentName = "g8s-controller"
@@ -42,7 +40,8 @@ func NewController(
 	g8sClientset clientset.Interface,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
-	secretInformer secretinformers.SecretInformer) *Controller {
+	secretInformer secretinformers.SecretInformer,
+	clusterRoleInformer rbacinformers.ClusterRoleInformer) *Controller {
 
 	logger := klog.FromContext(ctx)
 
@@ -64,17 +63,20 @@ func NewController(
 
 	controller := &Controller{
 		Client: Client{
-			kubeClientset:     kubeClientset,
-			g8sClientset:      g8sClientset,
-			loginInformer:     loginInformer,
-			secretInformer:    secretInformer,
-			loginsLister:      loginInformer.Lister(),
-			loginsSynced:      loginInformer.Informer().HasSynced,
-			sshKeyPairsLister: sshKeyPairInformer.Lister(),
-			sshKeyPairsSynced: sshKeyPairInformer.Informer().HasSynced,
-			secretsLister:     secretInformer.Lister(),
-			secretsSynced:     secretInformer.Informer().HasSynced,
-			recorder:          recorder,
+			kubeClientset:       kubeClientset,
+			g8sClientset:        g8sClientset,
+			loginInformer:       loginInformer,
+			secretInformer:      secretInformer,
+			clusterRoleInformer: clusterRoleInformer,
+			loginsLister:        loginInformer.Lister(),
+			loginsSynced:        loginInformer.Informer().HasSynced,
+			sshKeyPairsLister:   sshKeyPairInformer.Lister(),
+			sshKeyPairsSynced:   sshKeyPairInformer.Informer().HasSynced,
+			secretsLister:       secretInformer.Lister(),
+			secretsSynced:       secretInformer.Informer().HasSynced,
+			clusterRolesLister:  clusterRoleInformer.Lister(),
+			clusterRolesSynced:  clusterRoleInformer.Informer().HasSynced,
+			recorder:            recorder,
 		},
 		Executor: Executor{
 			loginWorkqueue:      workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
@@ -143,5 +145,28 @@ func NewController(
 		},
 		DeleteFunc: controller.handleSSHKeyPairObject,
 	})
+
+	// Set up an event handler for when ClusterRole resources change. This
+	// handler will lookup the owner of the given ClusterRole, and if it is
+	// owned by a SSHKeyPair resource then the handler will enqueue that SSHKeyPair resource for
+	// processing. This way, we don't need to implement custom logic for
+	// handling ClusterRole resources. More info on this pattern:
+	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
+	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleSSHKeyPairObject,
+		UpdateFunc: func(old, new interface{}) {
+			newDepl := new.(*rbacv1.ClusterRole)
+			oldDepl := old.(*rbacv1.ClusterRole)
+			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known ClusterRole.
+				// Two different versions of the same ClusterRole will always have different ResourceVersions.
+				// This section will skip calling handleObject() if they are the same.
+				return
+			}
+			controller.handleSSHKeyPairObject(new)
+		},
+		DeleteFunc: controller.handleSSHKeyPairObject,
+	})
+
 	return controller
 }

@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/charmbracelet/keygen v0.5.0
 	github.com/crossplane/crossplane-runtime v1.14.1
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/time v0.3.0
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0

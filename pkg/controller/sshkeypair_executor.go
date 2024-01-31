@@ -118,11 +118,6 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	backend := backendFromLister.DeepCopy()
 	history := historyFromLister.DeepCopy()
 
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
-		return nil
-	}
-
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")
@@ -171,6 +166,26 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		return err
 	}
 
+	// Get the ClusterRole for this SSHKeyPair
+	_, crerr := c.clusterRolesLister.Get(backendName)
+
+	// DeepCopy for safety
+	//clusterRole := clusterRoleFromLister.DeepCopy()
+
+	// if ClusterRole does not exist, create it
+	if errors.IsNotFound(crerr) {
+		logger.V(4).Info("Create ClusterRole")
+		_, err := c.Client.kubeClientset.RbacV1().ClusterRoles().Create(ctx, newClusterRole(backend), metav1.CreateOptions{})
+
+		// If an error occurs during Get/Create, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO is this necessary? updateSSHKeyPairStatus only needs one param?
 	// Finally, we update the status block of the sshKeyPair resource to reflect the
 	// current state of the world
 	err = c.updateSSHKeyPairStatus(sshKeyPair, history)

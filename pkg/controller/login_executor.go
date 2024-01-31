@@ -118,11 +118,6 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	backend := backendFromLister.DeepCopy()
 	history := historyFromLister.DeepCopy()
 
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
-		return nil
-	}
-
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")

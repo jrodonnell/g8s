@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
+	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -73,4 +78,27 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 // Secret.Immutable requires a *bool, helper func to return that
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+func newClusterRole(s *corev1.Secret) *rbacv1.ClusterRole {
+	name := s.ObjectMeta.Name
+	idx := slices.IndexFunc(s.OwnerReferences, func(o metav1.OwnerReference) bool { return o.APIVersion == "api.g8s.io/v1alpha1" })
+	ownerKind := s.OwnerReferences[idx].Kind
+	return &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(s, v1alpha1.SchemeGroupVersion.WithKind(ownerKind)),
+			},
+			Annotations: map[string]string{
+				"controller": "g8s",
+			},
+		},
+		Rules: []rbacv1.PolicyRule{{
+			Verbs:         []string{"get", "list", "watch"},
+			APIGroups:     []string{""},
+			Resources:     []string{"secrets"},
+			ResourceNames: []string{name},
+		}},
+	}
 }
