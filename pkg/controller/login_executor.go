@@ -157,16 +157,25 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 		return fmt.Errorf("%s", msg)
 	}
 
-	// Finally, we update the status block of the Login resource to reflect the
-	// current state of the world
-	err = c.updateLoginStatus(login, backend)
-	if err != nil {
-		return err
+	// Get the ClusterRole for this SSHKeyPair
+	_, crerr := c.clusterRolesLister.Get(backendName)
+
+	// if ClusterRole does not exist, create it
+	if errors.IsNotFound(crerr) {
+		logger.V(4).Info("Create ClusterRole")
+		_, err := c.Client.kubeClientset.RbacV1().ClusterRoles().Create(ctx, newClusterRole(backend), metav1.CreateOptions{})
+
+		// If an error occurs during Get/Create, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
 	}
 
 	// Finally, we update the status block of the sshKeyPair resource to reflect the
 	// current state of the world
-	err = c.updateLoginStatus(login, history)
+	err = c.updateLoginStatus(login)
 	if err != nil {
 		return err
 	}
@@ -175,7 +184,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *Controller) updateLoginStatus(login *v1alpha1.Login, secret *corev1.Secret) error {
+func (c *Controller) updateLoginStatus(login *v1alpha1.Login) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance

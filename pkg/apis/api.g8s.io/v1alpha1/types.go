@@ -25,7 +25,7 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// Login is the Schema for the passwords API
+// Login is the Schema for the Logins API
 type Login struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -74,7 +74,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// SSHKeyPair is the Schema for the passwords API
+// SSHKeyPair is the Schema for the SSHKeyPairs API
 type SSHKeyPair struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -102,4 +102,47 @@ type SSHKeyPairList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []SSHKeyPair `json:"items"`
+}
+
+// +genclient
+// +k8s:register-gen
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
+// result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
+// Allowlist is the Schema for the Allowlist API
+type Allowlist struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   AllowlistSpec   `json:"spec,omitempty"`
+	Status AllowlistStatus `json:"status,omitempty"`
+}
+
+// AllowlistSpec defines the desired state of Allowlist
+type AllowlistSpec struct {
+	Gate  string
+	Rules []PolicyRule
+}
+
+type PolicyRule struct {
+	Namespace string
+	Rules     []Rule
+}
+
+type Rule struct {
+	Kind string
+	Name string
+}
+
+// AllowlistStatus defines the observed state of Allowlist
+type AllowlistStatus struct {
+	Ready bool `json:"ready"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// AllowlistList contains a list of Allowlist
+type AllowlistList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Allowlist `json:"items"`
 }

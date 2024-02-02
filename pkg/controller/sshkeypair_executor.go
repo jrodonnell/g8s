@@ -147,7 +147,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		return err
 	}
 
-	// If the Secret is not controlled by this sshKeyPair resource, we should log
+	// If the Secret is not controlled by this SSHKeyPair resource, we should log
 	// a warning to the event recorder and return error msg.
 	if !metav1.IsControlledBy(backend, sshKeyPair) {
 		msg := fmt.Sprintf(MessageResourceExists, backend.Name)
@@ -159,18 +159,8 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		return fmt.Errorf("%s", msg)
 	}
 
-	// Finally, we update the status block of the sshKeyPair resource to reflect the
-	// current state of the world
-	err = c.updateSSHKeyPairStatus(sshKeyPair, backend)
-	if err != nil {
-		return err
-	}
-
 	// Get the ClusterRole for this SSHKeyPair
 	_, crerr := c.clusterRolesLister.Get(backendName)
-
-	// DeepCopy for safety
-	//clusterRole := clusterRoleFromLister.DeepCopy()
 
 	// if ClusterRole does not exist, create it
 	if errors.IsNotFound(crerr) {
@@ -185,10 +175,9 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		}
 	}
 
-	// TODO is this necessary? updateSSHKeyPairStatus only needs one param?
-	// Finally, we update the status block of the sshKeyPair resource to reflect the
+	// Finally, we update the status block of the SSHKeyPair resource to reflect the
 	// current state of the world
-	err = c.updateSSHKeyPairStatus(sshKeyPair, history)
+	err = c.updateSSHKeyPairStatus(sshKeyPair)
 	if err != nil {
 		return err
 	}
@@ -197,7 +186,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	return nil
 }
 
-func (c *Controller) updateSSHKeyPairStatus(sshKeyPair *v1alpha1.SSHKeyPair, secret *corev1.Secret) error {
+func (c *Controller) updateSSHKeyPairStatus(sshKeyPair *v1alpha1.SSHKeyPair) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
