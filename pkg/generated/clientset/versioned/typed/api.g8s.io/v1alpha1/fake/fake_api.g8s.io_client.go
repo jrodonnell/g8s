@@ -27,6 +27,10 @@ type FakeApiV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeApiV1alpha1) Allowlists(namespace string) v1alpha1.AllowlistInterface {
+	return &FakeAllowlists{c, namespace}
+}
+
 func (c *FakeApiV1alpha1) Logins(namespace string) v1alpha1.LoginInterface {
 	return &FakeLogins{c, namespace}
 }

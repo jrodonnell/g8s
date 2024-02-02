@@ -17,6 +17,14 @@ limitations under the License.
 
 package v1alpha1
 
+// AllowlistListerExpansion allows custom methods to be added to
+// AllowlistLister.
+type AllowlistListerExpansion interface{}
+
+// AllowlistNamespaceListerExpansion allows custom methods to be added to
+// AllowlistNamespaceLister.
+type AllowlistNamespaceListerExpansion interface{}
+
 // LoginListerExpansion allows custom methods to be added to
 // LoginLister.
 type LoginListerExpansion interface{}

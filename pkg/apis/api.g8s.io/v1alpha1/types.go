@@ -120,18 +120,23 @@ type Allowlist struct {
 
 // AllowlistSpec defines the desired state of Allowlist
 type AllowlistSpec struct {
-	Gate  string
-	Rules []PolicyRule
+	// +optional
+	Gates []string `json:"gates,omitempty"`
+
+	// +optional
+	Rules []PolicyRule `json:"rules,omitempty"`
 }
 
 type PolicyRule struct {
-	Namespace string
-	Rules     []Rule
+	Namespaces []string `json:"namespaces,omitempty"`
+	Rules      []Rule   `json:"rules,omitempty"`
 }
 
+// A single object which will be allowed to read the value of a certain gate
 type Rule struct {
-	Kind string
-	Name string
+	Kind       string   `json:"kind,omitempty"`
+	Name       string   `json:"name,omitempty"`
+	Containers []string `json:"containers,omitempty"`
 }
 
 // AllowlistStatus defines the observed state of Allowlist

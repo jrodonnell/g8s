@@ -27,6 +27,7 @@ import (
 
 type ApiV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	AllowlistsGetter
 	LoginsGetter
 	SSHKeyPairsGetter
 }
@@ -34,6 +35,10 @@ type ApiV1alpha1Interface interface {
 // ApiV1alpha1Client is used to interact with features provided by the api.g8s.io group.
 type ApiV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *ApiV1alpha1Client) Allowlists(namespace string) AllowlistInterface {
+	return newAllowlists(c, namespace)
 }
 
 func (c *ApiV1alpha1Client) Logins(namespace string) LoginInterface {

@@ -17,6 +17,8 @@ limitations under the License.
 
 package v1alpha1
 
+type AllowlistExpansion interface{}
+
 type LoginExpansion interface{}
 
 type SSHKeyPairExpansion interface{}

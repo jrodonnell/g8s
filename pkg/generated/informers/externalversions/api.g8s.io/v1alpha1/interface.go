@@ -23,6 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// Allowlists returns a AllowlistInformer.
+	Allowlists() AllowlistInformer
 	// Logins returns a LoginInformer.
 	Logins() LoginInformer
 	// SSHKeyPairs returns a SSHKeyPairInformer.
@@ -38,6 +40,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// Allowlists returns a AllowlistInformer.
+func (v *version) Allowlists() AllowlistInformer {
+	return &allowlistInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Logins returns a LoginInformer.
