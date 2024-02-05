@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
+	admissionregistrationinformers "k8s.io/client-go/informers/admissionregistration/v1"
 	secretinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
@@ -38,10 +39,12 @@ func NewController(
 	ctx context.Context,
 	kubeClientset kubernetes.Interface,
 	g8sClientset clientset.Interface,
+	allowlistInformer informers.AllowlistInformer,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
-	secretInformer secretinformers.SecretInformer,
-	clusterRoleInformer rbacinformers.ClusterRoleInformer) *Controller {
+	clusterRoleInformer rbacinformers.ClusterRoleInformer,
+	mutatingWebhookConfigurationInformer admissionregistrationinformers.MutatingWebhookConfigurationInformer,
+	secretInformer secretinformers.SecretInformer) *Controller {
 
 	logger := klog.FromContext(ctx)
 
@@ -63,22 +66,34 @@ func NewController(
 
 	controller := &Controller{
 		Client: Client{
-			kubeClientset:       kubeClientset,
-			g8sClientset:        g8sClientset,
-			loginInformer:       loginInformer,
-			secretInformer:      secretInformer,
-			clusterRoleInformer: clusterRoleInformer,
-			loginsLister:        loginInformer.Lister(),
-			loginsSynced:        loginInformer.Informer().HasSynced,
-			sshKeyPairsLister:   sshKeyPairInformer.Lister(),
-			sshKeyPairsSynced:   sshKeyPairInformer.Informer().HasSynced,
-			secretsLister:       secretInformer.Lister(),
-			secretsSynced:       secretInformer.Informer().HasSynced,
-			clusterRolesLister:  clusterRoleInformer.Lister(),
-			clusterRolesSynced:  clusterRoleInformer.Informer().HasSynced,
-			recorder:            recorder,
+			kubeClientset: kubeClientset,
+			g8sClientset:  g8sClientset,
+			recorder:      recorder,
+
+			// informers & listers for our custom types
+			allowlistInformer:  allowlistInformer,
+			allowlistsLister:   allowlistInformer.Lister(),
+			allowlistsSynced:   allowlistInformer.Informer().HasSynced,
+			loginInformer:      loginInformer,
+			loginsLister:       loginInformer.Lister(),
+			loginsSynced:       loginInformer.Informer().HasSynced,
+			sshKeyPairInformer: sshKeyPairInformer,
+			sshKeyPairsLister:  sshKeyPairInformer.Lister(),
+			sshKeyPairsSynced:  sshKeyPairInformer.Informer().HasSynced,
+
+			// informers & listers for our backing types
+			clusterRoleInformer:                  clusterRoleInformer,
+			clusterRolesLister:                   clusterRoleInformer.Lister(),
+			clusterRolesSynced:                   clusterRoleInformer.Informer().HasSynced,
+			mutatingWebhookConfigurationInformer: mutatingWebhookConfigurationInformer,
+			mutatingWebhookConfigurationsLister:  mutatingWebhookConfigurationInformer.Lister(),
+			mutatingWebhookConfigurationsSynced:  mutatingWebhookConfigurationInformer.Informer().HasSynced,
+			secretInformer:                       secretInformer,
+			secretsLister:                        secretInformer.Lister(),
+			secretsSynced:                        secretInformer.Informer().HasSynced,
 		},
 		Executor: Executor{
+			allowlistWorkqueue:  workqueue.NewNamedRateLimitingQueue(ratelimiter, "Allowlist"),
 			loginWorkqueue:      workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
 			sshKeyPairWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
 		},
@@ -86,7 +101,7 @@ func NewController(
 
 	logger.Info("Setting up event handlers")
 
-	// Set up an event handler for when login resources change
+	// Set up an event handler for when Login resources change
 	loginInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueLogin,
 		UpdateFunc: func(old, new interface{}) {
@@ -94,7 +109,7 @@ func NewController(
 		},
 	})
 
-	// Set up an event handler for when sshkeypair resources change
+	// Set up an event handler for when SSHkeypair resources change
 	sshKeyPairInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueSSHKeyPair,
 		UpdateFunc: func(old, new interface{}) {
@@ -124,9 +139,31 @@ func NewController(
 		DeleteFunc: controller.handleLoginObject,
 	})
 
+	// Set up an event handler for when ClusterRole resources change. This
+	// handler will lookup the owner of the given ClusterRole, and if it is
+	// owned by a Login resource then the handler will enqueue that Login resource for
+	// processing. This way, we don't need to implement custom logic for
+	// handling ClusterRole resources. More info on this pattern:
+	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
+	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleLoginObject,
+		UpdateFunc: func(old, new interface{}) {
+			newDepl := new.(*rbacv1.ClusterRole)
+			oldDepl := old.(*rbacv1.ClusterRole)
+			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known ClusterRole.
+				// Two different versions of the same ClusterRole will always have different ResourceVersions.
+				// This section will skip calling handleObject() if they are the same.
+				return
+			}
+			controller.handleLoginObject(new)
+		},
+		DeleteFunc: controller.handleLoginObject,
+	})
+
 	// Set up an event handler for when Secret resources change. This
 	// handler will lookup the owner of the given Secret, and if it is
-	// owned by a SSHKeyPair resource then the handler will enqueue that SSHKeyPair resource for
+	// owned by an SSHKeyPair resource then the handler will enqueue that SSHKeyPair resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling Secret resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md

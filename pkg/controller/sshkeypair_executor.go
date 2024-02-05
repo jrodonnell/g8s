@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
-	"github.com/the-gizmo-dojo/g8s/pkg/g8s"
+	g8sv1alpha1 "github.com/the-gizmo-dojo/g8s/pkg/apis/api.g8s.io/v1alpha1"
+	internalv1alpha1 "github.com/the-gizmo-dojo/g8s/pkg/apis/internal.g8s.io/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +57,7 @@ func (c *Controller) processNextsshKeyPairWorkItem(ctx context.Context) bool {
 			return nil
 		}
 		// Run the sshKeyPairSyncHandler, passing it the namespace/name string of the
-		// sshKeyPair resource to be synced.
+		// SSHKeyPair resource to be synced.
 		if err := c.sshKeyPairSyncHandler(ctx, key); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
 			c.sshKeyPairWorkqueue.AddRateLimited(key)
@@ -79,7 +79,7 @@ func (c *Controller) processNextsshKeyPairWorkItem(ctx context.Context) bool {
 }
 
 // sshKeyPairSyncHandler compares the actual state with the desired, and attempts to
-// converge the two. It then updates the Status block of the sshKeyPair resource
+// converge the two. It then updates the Status block of the SSHhKeyPair resource
 // with the current status of the resource.
 func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
@@ -91,10 +91,10 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		return nil
 	}
 
-	// Get the sshKeyPair resource with this namespace/name
+	// Get the SSHKeyPair resource with this namespace/name
 	sshKeyPairFromLister, err := c.sshKeyPairsLister.SSHKeyPairs(namespace).Get(name)
 	if err != nil {
-		// The sshKeyPair resource may no longer exist, in which case we stop
+		// The SSHKeyPair resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
 			utilruntime.HandleError(fmt.Errorf("SSHKeyPair '%s' in work queue no longer exists", key))
@@ -118,24 +118,30 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	backend := backendFromLister.DeepCopy()
 	history := historyFromLister.DeepCopy()
 
+	g8sSSHKP := internalv1alpha1.SSHKeyPairWithHistory(sshKeyPair)
+
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
 		logger.V(4).Info("Create backend and history Secret resources")
-		g8sKp := g8s.SSHKeyPairWithHistory(sshKeyPair)
-		g8sKpContent := g8sKp.Rotate()
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, g8sKpContent["ssh.pub-0"], g8sKpContent["ssh.key-0"]), metav1.CreateOptions{})
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, g8sKpContent), metav1.CreateOptions{})
+		hContent := g8sSSHKP.Rotate()
+		bContent := make(map[string]string)
+		bContent["ssh.pub"] = hContent["ssh.pub-0"]
+		bContent["ssh.key"] = hContent["ssh.key-0"]
+
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, internalv1alpha1.NewBackendSecret(g8sSSHKP, bContent), metav1.CreateOptions{})
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, internalv1alpha1.NewHistorySecret(g8sSSHKP, hContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
-		pub := string(history.Data["ssh.pub-0"])
-		key := string(history.Data["ssh.key-0"])
-		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairBackendSecret(sshKeyPair, pub, key), metav1.CreateOptions{})
+		content := make(map[string]string)
+		content["ssh.pub"] = string(history.Data["ssh.pub-0"])
+		content["ssh.key"] = string(history.Data["ssh.key-0"])
+		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, internalv1alpha1.NewBackendSecret(g8sSSHKP, content), metav1.CreateOptions{})
 	} else if errors.IsNotFound(herr) { // backend exists but history dne, rebuild history from backend
 		logger.V(4).Info("Create history Secret resources from backend")
-		kp := make(map[string]string)
-		kp["ssh.pub-0"] = string(backend.Data["ssh.pub"])
-		kp["ssh.key-0"] = string(backend.Data["ssh.key"])
-		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, newSSHKeyPairHistorySecret(sshKeyPair, kp), metav1.CreateOptions{})
+		content := make(map[string]string)
+		content["ssh.pub-0"] = string(backend.Data["ssh.pub"])
+		content["ssh.key-0"] = string(backend.Data["ssh.key"])
+		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, internalv1alpha1.NewHistorySecret(g8sSSHKP, content), metav1.CreateOptions{})
 	} else {
 		logger.V(4).Info("Secret resources for history and backend exist")
 	}
@@ -186,7 +192,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	return nil
 }
 
-func (c *Controller) updateSSHKeyPairStatus(sshKeyPair *v1alpha1.SSHKeyPair) error {
+func (c *Controller) updateSSHKeyPairStatus(sshKeyPair *g8sv1alpha1.SSHKeyPair) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -200,9 +206,9 @@ func (c *Controller) updateSSHKeyPairStatus(sshKeyPair *v1alpha1.SSHKeyPair) err
 	return err
 }
 
-// enqueueSSHKeyPair takes a sshKeyPair resource and converts it into a namespace/name
+// enqueueSSHKeyPair takes an SSHKeyPair resource and converts it into a namespace/name
 // string which is then put onto the workqueue. This method should *not* be
-// passed resources of any type other than sshKeyPair.
+// passed resources of any type other than SSHKeyPair.
 func (c *Controller) enqueueSSHKeyPair(obj any) {
 	var key string
 	var err error
@@ -251,51 +257,5 @@ func (c *Controller) handleSSHKeyPairObject(obj interface{}) {
 
 		c.enqueueSSHKeyPair(sshKeyPair)
 		return
-	}
-}
-
-// newSSHKeyPairBackendSecret creates a new Secret for a SSHKeyPair resource which contains the actual login.
-// It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
-// the SSHKeyPair resource that 'owns' it.
-func newSSHKeyPairBackendSecret(ssh *v1alpha1.SSHKeyPair, pub, key string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sshkeypair-" + ssh.ObjectMeta.Name,
-			Namespace: ssh.ObjectMeta.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(ssh, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
-			},
-			Annotations: map[string]string{
-				"controller": "g8s",
-			},
-		},
-		Immutable: boolPtr(true),
-		StringData: map[string]string{
-			"ssh.pub": pub,
-			"ssh.key": key,
-		},
-		Type: "Opaque",
-	}
-}
-
-// newSSHKeyPairHistorySecret creates a new Secret for a SSHKeyPair resource which contains the sshkeypair's history.
-// It also sets the appropriate OwnerReferences on the resource so handleSSHKeyPairObject can discover
-// the SSHKeyPair resource that 'owns' it.
-func newSSHKeyPairHistorySecret(ssh *v1alpha1.SSHKeyPair, kphist map[string]string) *corev1.Secret {
-
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sshkeypair-" + ssh.ObjectMeta.Name + "-history",
-			Namespace: ssh.ObjectMeta.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(ssh, v1alpha1.SchemeGroupVersion.WithKind("SSHKeyPair")),
-			},
-			Annotations: map[string]string{
-				"controller": "g8s",
-			},
-		},
-		Immutable:  boolPtr(true),
-		StringData: kphist,
-		Type:       "Opaque",
 	}
 }

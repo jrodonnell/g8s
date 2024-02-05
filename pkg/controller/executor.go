@@ -38,6 +38,7 @@ type Executor struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
+	allowlistWorkqueue  workqueue.RateLimitingInterface
 	loginWorkqueue      workqueue.RateLimitingInterface
 	sshKeyPairWorkqueue workqueue.RateLimitingInterface
 }
@@ -57,13 +58,15 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	// Wait for the caches to be synced before starting workers
 	logger.Info("Waiting for informer caches to sync")
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.loginsSynced, c.sshKeyPairsSynced, c.secretsSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.loginsSynced, c.sshKeyPairsSynced, c.clusterRolesSynced,
+		c.mutatingWebhookConfigurationsSynced, c.secretsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
 	logger.Info("Starting workers", "count", workers)
 	// Launch two workers to process At resources
 	for i := 0; i < workers; i++ {
+		go wait.UntilWithContext(ctx, c.runAllowlistWorker, time.Second)
 		go wait.UntilWithContext(ctx, c.runLoginWorker, time.Second)
 		go wait.UntilWithContext(ctx, c.runSSHKeyPairWorker, time.Second)
 	}

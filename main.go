@@ -58,10 +58,12 @@ func main() {
 	g8sInformerFactory := informers.NewSharedInformerFactory(g8sClient, time.Second*30)
 
 	controller := controller.NewController(ctx, kubeClient, g8sClient,
+		g8sInformerFactory.Api().V1alpha1().Allowlists(),
 		g8sInformerFactory.Api().V1alpha1().Logins(),
 		g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
-		kubeInformerFactory.Core().V1().Secrets(),
 		kubeInformerFactory.Rbac().V1().ClusterRoles(),
+		kubeInformerFactory.Admissionregistration().V1().MutatingWebhookConfigurations(),
+		kubeInformerFactory.Core().V1().Secrets(),
 	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
@@ -69,7 +71,7 @@ func main() {
 	kubeInformerFactory.Start(ctx.Done())
 	g8sInformerFactory.Start(ctx.Done())
 
-	if err = controller.Run(ctx, 2); err != nil {
+	if err = controller.Run(ctx, 1); err != nil {
 		logger.Error(err, "Error running controller")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
