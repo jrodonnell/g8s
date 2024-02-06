@@ -19,13 +19,13 @@ type Meta struct {
 
 // generators for gates
 type G8s interface {
-	GetMeta() Meta
+	getMeta() Meta
 	Generate() map[string]string
 	Rotate() map[string]string
 }
 
 func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
-	meta := g8s.GetMeta()
+	meta := g8s.getMeta()
 	kind := meta.Kind
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -45,7 +45,7 @@ func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
 }
 
 func NewHistorySecret(g8s G8s, content map[string]string) *corev1.Secret {
-	meta := g8s.GetMeta()
+	meta := g8s.getMeta()
 	kind := meta.Kind
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -83,7 +83,7 @@ func LoginWithHistory(l *v1alpha1.Login) *Login {
 	}
 }
 
-func (l Login) GetMeta() Meta {
+func (l Login) getMeta() Meta {
 	return Meta{
 		metav1.TypeMeta{
 			Kind:       "Login",
@@ -132,7 +132,7 @@ func SSHKeyPairWithHistory(s *v1alpha1.SSHKeyPair) *SSHKeyPair {
 	}
 }
 
-func (ssh SSHKeyPair) GetMeta() Meta {
+func (ssh SSHKeyPair) getMeta() Meta {
 	return Meta{
 		metav1.TypeMeta{
 			Kind:       "SSHKeyPair",
