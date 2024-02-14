@@ -105,7 +105,7 @@ func (c *Controller) allowlistSyncHandler(ctx context.Context, key string) error
 		return err
 	}
 
-	// TODO: create MAW
+	// TODO: create MAW and Service pointing to it
 
 	// DeepCopy for safety
 	allowlist := allowlistFromLister.DeepCopy()

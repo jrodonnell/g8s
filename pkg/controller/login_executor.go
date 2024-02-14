@@ -94,7 +94,6 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 
 	// Get the Login resource with this namespace/name
 	loginFromLister, err := c.loginsLister.Logins(namespace).Get(name)
-	fmt.Println("lfl: ", loginFromLister)
 	if err != nil {
 		// The Login resource may no longer exist, in which case we stop
 		// processing.
