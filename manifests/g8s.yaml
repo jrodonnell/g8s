@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: g8s
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: g8s
+  namespace: g8s
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name:  g8s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: g8s
+  namespace: g8s
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g8s-controller
+  namespace: g8s
+spec:
+  selector:
+    matchLabels:
+      api.g8s.io/controller: g8s-controller
+  template:
+    metadata:
+      labels:
+        api.g8s.io/controller: g8s-controller # necessary to avoid drain
+    spec:
+      serviceAccountName: g8s
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/controlplane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/etcd"
+          operator: "Exists"
+          effect: "NoExecute"
+      containers:
+        - name: g8s-controller
+          image: jrodonnell/g8s-controller:latest
+          imagePullPolicy: Always
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            seccompProfile: 
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
