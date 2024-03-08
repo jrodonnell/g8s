@@ -13,14 +13,14 @@ import (
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	"github.com/the-gizmo-dojo/g8s/pkg/controller"
-	clientset "github.com/the-gizmo-dojo/g8s/pkg/generated/clientset/versioned"
-	informers "github.com/the-gizmo-dojo/g8s/pkg/generated/informers/externalversions"
+	"github.com/jrodonnell/g8s/controller"
+	clientset "github.com/jrodonnell/g8s/controller/generated/clientset/versioned"
+	informers "github.com/jrodonnell/g8s/controller/generated/informers/externalversions"
 	// "encoding/json"
 	// "fmt"
-	// "github.com/the-gizmo-dojo/g8s/pkg/config"
+	// "github.com/jrodonnell/g8s/pkg/config"
 	// "reflect"
-	// "github.com/the-gizmo-dojo/g8/pkg/qanda"
+	// "github.com/jrodonnell/g8/pkg/qanda"
 )
 
 var (
