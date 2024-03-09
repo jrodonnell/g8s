@@ -54,6 +54,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=api.g8s.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("allowlists"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().Allowlists().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("kubetlsbundles"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().KubeTLSBundles().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("logins"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1alpha1().Logins().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("sshkeypairs"):

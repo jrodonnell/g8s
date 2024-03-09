@@ -59,6 +59,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Allowlist{},
 		&AllowlistList{},
+		&KubeTLSBundle{},
+		&KubeTLSBundleList{},
 		&Login{},
 		&LoginList{},
 		&SSHKeyPair{},

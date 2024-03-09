@@ -18,7 +18,7 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/jrodonnell/g8s/pkg/generated/clientset/versioned/typed/api.g8s.io/v1alpha1"
+	v1alpha1 "github.com/jrodonnell/g8s/controller/generated/clientset/versioned/typed/api.g8s.io/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
@@ -29,6 +29,10 @@ type FakeApiV1alpha1 struct {
 
 func (c *FakeApiV1alpha1) Allowlists(namespace string) v1alpha1.AllowlistInterface {
 	return &FakeAllowlists{c, namespace}
+}
+
+func (c *FakeApiV1alpha1) KubeTLSBundles(namespace string) v1alpha1.KubeTLSBundleInterface {
+	return &FakeKubeTLSBundles{c, namespace}
 }
 
 func (c *FakeApiV1alpha1) Logins(namespace string) v1alpha1.LoginInterface {

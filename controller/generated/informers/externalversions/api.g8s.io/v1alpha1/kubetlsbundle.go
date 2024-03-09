@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// LoginInformer provides access to a shared informer and lister for
-// Logins.
-type LoginInformer interface {
+// KubeTLSBundleInformer provides access to a shared informer and lister for
+// KubeTLSBundles.
+type KubeTLSBundleInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.LoginLister
+	Lister() v1alpha1.KubeTLSBundleLister
 }
 
-type loginInformer struct {
+type kubeTLSBundleInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewLoginInformer constructs a new informer for Login type.
+// NewKubeTLSBundleInformer constructs a new informer for KubeTLSBundle type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewLoginInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredLoginInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewKubeTLSBundleInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredKubeTLSBundleInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredLoginInformer constructs a new informer for Login type.
+// NewFilteredKubeTLSBundleInformer constructs a new informer for KubeTLSBundle type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredLoginInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredKubeTLSBundleInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().Logins(namespace).List(context.TODO(), options)
+				return client.ApiV1alpha1().KubeTLSBundles(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1alpha1().Logins(namespace).Watch(context.TODO(), options)
+				return client.ApiV1alpha1().KubeTLSBundles(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&apig8siov1alpha1.Login{},
+		&apig8siov1alpha1.KubeTLSBundle{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *loginInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredLoginInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *kubeTLSBundleInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredKubeTLSBundleInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *loginInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apig8siov1alpha1.Login{}, f.defaultInformer)
+func (f *kubeTLSBundleInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apig8siov1alpha1.KubeTLSBundle{}, f.defaultInformer)
 }
 
-func (f *loginInformer) Lister() v1alpha1.LoginLister {
-	return v1alpha1.NewLoginLister(f.Informer().GetIndexer())
+func (f *kubeTLSBundleInformer) Lister() v1alpha1.KubeTLSBundleLister {
+	return v1alpha1.NewKubeTLSBundleLister(f.Informer().GetIndexer())
 }

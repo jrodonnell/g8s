@@ -18,13 +18,15 @@ limitations under the License.
 package v1alpha1
 
 import (
-	internalinterfaces "github.com/jrodonnell/g8s/pkg/generated/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/jrodonnell/g8s/controller/generated/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// Allowlists returns a AllowlistInformer.
 	Allowlists() AllowlistInformer
+	// KubeTLSBundles returns a KubeTLSBundleInformer.
+	KubeTLSBundles() KubeTLSBundleInformer
 	// Logins returns a LoginInformer.
 	Logins() LoginInformer
 	// SSHKeyPairs returns a SSHKeyPairInformer.
@@ -45,6 +47,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Allowlists returns a AllowlistInformer.
 func (v *version) Allowlists() AllowlistInformer {
 	return &allowlistInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// KubeTLSBundles returns a KubeTLSBundleInformer.
+func (v *version) KubeTLSBundles() KubeTLSBundleInformer {
+	return &kubeTLSBundleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Logins returns a LoginInformer.

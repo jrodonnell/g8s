@@ -20,14 +20,15 @@ package v1alpha1
 import (
 	"net/http"
 
-	v1alpha1 "github.com/jrodonnell/g8s/pkg/apis/api.g8s.io/v1alpha1"
-	"github.com/jrodonnell/g8s/pkg/generated/clientset/versioned/scheme"
+	v1alpha1 "github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
+	"github.com/jrodonnell/g8s/controller/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type ApiV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	AllowlistsGetter
+	KubeTLSBundlesGetter
 	LoginsGetter
 	SSHKeyPairsGetter
 }
@@ -39,6 +40,10 @@ type ApiV1alpha1Client struct {
 
 func (c *ApiV1alpha1Client) Allowlists(namespace string) AllowlistInterface {
 	return newAllowlists(c, namespace)
+}
+
+func (c *ApiV1alpha1Client) KubeTLSBundles(namespace string) KubeTLSBundleInterface {
+	return newKubeTLSBundles(c, namespace)
 }
 
 func (c *ApiV1alpha1Client) Logins(namespace string) LoginInterface {
