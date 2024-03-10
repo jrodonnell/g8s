@@ -25,6 +25,86 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
+// Allowlist is the Schema for the Allowlist API
+type Allowlist struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   AllowlistSpec   `json:"spec,omitempty"`
+	Status AllowlistStatus `json:"status,omitempty"`
+}
+
+// AllowlistSpec defines the desired state of Allowlist
+type AllowlistSpec struct {
+	// +optional
+	Gates []string `json:"gates,omitempty"`
+
+	// +optional
+	Rules []PolicyRule `json:"rules,omitempty"`
+}
+
+type PolicyRule struct {
+	Namespaces []string `json:"namespaces,omitempty"`
+	Rules      []Rule   `json:"rules,omitempty"`
+}
+
+// A single object which will be allowed to read the value of a certain gate
+type Rule struct {
+	Kind       string   `json:"kind,omitempty"`
+	Name       string   `json:"name,omitempty"`
+	Containers []string `json:"containers,omitempty"`
+}
+
+// AllowlistStatus defines the observed state of Allowlist
+type AllowlistStatus struct {
+	Ready bool `json:"ready"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// AllowlistList contains a list of Allowlist
+type AllowlistList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Allowlist `json:"items"`
+}
+
+// +genclient
+// +k8s:register-gen
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
+// result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
+// KubeTLSBundle is the Schema for the KubeTLSBundles API
+type KubeTLSBundle struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   KubeTLSBundleSpec   `json:"spec,omitempty"`
+	Status KubeTLSBundleStatus `json:"status,omitempty"`
+}
+
+// KubeTLSBundleSpec defines the desired state of KubeTLSBundle
+type KubeTLSBundleSpec struct {
+	AppName string `json:"appname,omitempty"` // becomes 'O = g8s:$AppName' in CSR Subject
+}
+
+// KubeTLSBundleStatus defines the observed state of KubeTLSBundle
+type KubeTLSBundleStatus struct {
+	Ready bool `json:"ready"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// KubeTLSBundleList contains a list of KubeTLSBundle
+type KubeTLSBundleList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []KubeTLSBundle `json:"items"`
+}
+
+// +genclient
+// +k8s:register-gen
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
+// result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
 // Login is the Schema for the Logins API
 type Login struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -102,84 +182,4 @@ type SSHKeyPairList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []SSHKeyPair `json:"items"`
-}
-
-// +genclient
-// +k8s:register-gen
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
-// result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// KubeTLSBundle is the Schema for the KubeTLSBundles API
-type KubeTLSBundle struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   KubeTLSBundleSpec   `json:"spec,omitempty"`
-	Status KubeTLSBundleStatus `json:"status,omitempty"`
-}
-
-// KubeTLSBundleSpec defines the desired state of KubeTLSBundle
-type KubeTLSBundleSpec struct {
-	AppName string `json:"appname,omitempty"` // becomes 'O = g8s:$AppName' in CSR Subject
-}
-
-// KubeTLSBundleStatus defines the observed state of KubeTLSBundle
-type KubeTLSBundleStatus struct {
-	Ready bool `json:"ready"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// KubeTLSBundleList contains a list of KubeTLSBundle
-type KubeTLSBundleList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KubeTLSBundle `json:"items"`
-}
-
-// +genclient
-// +k8s:register-gen
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
-// result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// Allowlist is the Schema for the Allowlist API
-type Allowlist struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   AllowlistSpec   `json:"spec,omitempty"`
-	Status AllowlistStatus `json:"status,omitempty"`
-}
-
-// AllowlistSpec defines the desired state of Allowlist
-type AllowlistSpec struct {
-	// +optional
-	Gates []string `json:"gates,omitempty"`
-
-	// +optional
-	Rules []PolicyRule `json:"rules,omitempty"`
-}
-
-type PolicyRule struct {
-	Namespaces []string `json:"namespaces,omitempty"`
-	Rules      []Rule   `json:"rules,omitempty"`
-}
-
-// A single object which will be allowed to read the value of a certain gate
-type Rule struct {
-	Kind       string   `json:"kind,omitempty"`
-	Name       string   `json:"name,omitempty"`
-	Containers []string `json:"containers,omitempty"`
-}
-
-// AllowlistStatus defines the observed state of Allowlist
-type AllowlistStatus struct {
-	Ready bool `json:"ready"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// AllowlistList contains a list of Allowlist
-type AllowlistList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Allowlist `json:"items"`
 }

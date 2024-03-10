@@ -40,6 +40,7 @@ func NewController(
 	kubeClientset kubernetes.Interface,
 	g8sClientset clientset.Interface,
 	allowlistInformer informers.AllowlistInformer,
+	kubeTLSBundleInformer informers.KubeTLSBundleInformer,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
 	clusterRoleInformer rbacinformers.ClusterRoleInformer,
@@ -71,15 +72,18 @@ func NewController(
 			recorder:      recorder,
 
 			// informers & listers for our custom types
-			allowlistInformer:  allowlistInformer,
-			allowlistsLister:   allowlistInformer.Lister(),
-			allowlistsSynced:   allowlistInformer.Informer().HasSynced,
-			loginInformer:      loginInformer,
-			loginsLister:       loginInformer.Lister(),
-			loginsSynced:       loginInformer.Informer().HasSynced,
-			sshKeyPairInformer: sshKeyPairInformer,
-			sshKeyPairsLister:  sshKeyPairInformer.Lister(),
-			sshKeyPairsSynced:  sshKeyPairInformer.Informer().HasSynced,
+			allowlistInformer:     allowlistInformer,
+			allowlistsLister:      allowlistInformer.Lister(),
+			allowlistsSynced:      allowlistInformer.Informer().HasSynced,
+			kubeTLSBundleInformer: kubeTLSBundleInformer,
+			kubeTLSBundlesLister:  kubeTLSBundleInformer.Lister(),
+			kubeTLSBundlesSynced:  kubeTLSBundleInformer.Informer().HasSynced,
+			loginInformer:         loginInformer,
+			loginsLister:          loginInformer.Lister(),
+			loginsSynced:          loginInformer.Informer().HasSynced,
+			sshKeyPairInformer:    sshKeyPairInformer,
+			sshKeyPairsLister:     sshKeyPairInformer.Lister(),
+			sshKeyPairsSynced:     sshKeyPairInformer.Informer().HasSynced,
 
 			// informers & listers for our backing types
 			clusterRoleInformer:                  clusterRoleInformer,
@@ -93,13 +97,22 @@ func NewController(
 			secretsSynced:                        secretInformer.Informer().HasSynced,
 		},
 		Executor: Executor{
-			allowlistWorkqueue:  workqueue.NewNamedRateLimitingQueue(ratelimiter, "Allowlist"),
-			loginWorkqueue:      workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
-			sshKeyPairWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
+			allowlistWorkqueue:     workqueue.NewNamedRateLimitingQueue(ratelimiter, "Allowlist"),
+			kubeTLSBundleWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "KubeTLSBundle"),
+			loginWorkqueue:         workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
+			sshKeyPairWorkqueue:    workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
 		},
 	}
 
 	logger.Info("Setting up event handlers")
+
+	// Set up an event handler for when KubeTLSBundle resources change
+	kubeTLSBundleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueKubeTLSBundle,
+		UpdateFunc: func(old, new interface{}) {
+			controller.enqueueKubeTLSBundle(new)
+		},
+	})
 
 	// Set up an event handler for when Login resources change
 	loginInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -115,6 +128,50 @@ func NewController(
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueSSHKeyPair(new)
 		},
+	})
+
+	// Set up an event handler for when Secret resources change. This
+	// handler will lookup the owner of the given Secret, and if it is
+	// owned by a KubeTLSBundle resource then the handler will enqueue that KubeTLSBundle resource for
+	// processing. This way, we don't need to implement custom logic for
+	// handling Secret resources. More info on this pattern:
+	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
+	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleKubeTLSBundleObject,
+		UpdateFunc: func(old, new interface{}) {
+			newDepl := new.(*corev1.Secret)
+			oldDepl := old.(*corev1.Secret)
+			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known Secrets.
+				// Two different versions of the same Secret will always have different ResourceVersions.
+				// This section will skip calling handleObject() if they are the same.
+				return
+			}
+			controller.handleKubeTLSBundleObject(new)
+		},
+		DeleteFunc: controller.handleKubeTLSBundleObject,
+	})
+
+	// Set up an event handler for when ClusterRole resources change. This
+	// handler will lookup the owner of the given ClusterRole, and if it is
+	// owned by a KubeTLSBundle resource then the handler will enqueue that KubeTLSBundle resource for
+	// processing. This way, we don't need to implement custom logic for
+	// handling ClusterRole resources. More info on this pattern:
+	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
+	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleKubeTLSBundleObject,
+		UpdateFunc: func(old, new interface{}) {
+			newDepl := new.(*rbacv1.ClusterRole)
+			oldDepl := old.(*rbacv1.ClusterRole)
+			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known ClusterRole.
+				// Two different versions of the same ClusterRole will always have different ResourceVersions.
+				// This section will skip calling handleObject() if they are the same.
+				return
+			}
+			controller.handleKubeTLSBundleObject(new)
+		},
+		DeleteFunc: controller.handleKubeTLSBundleObject,
 	})
 
 	// Set up an event handler for when Secret resources change. This

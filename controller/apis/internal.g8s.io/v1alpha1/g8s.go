@@ -7,6 +7,8 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -17,7 +19,7 @@ import (
 	certsv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	certsv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
 )
 
 type Meta struct {
@@ -32,20 +34,26 @@ type G8s interface {
 	Rotate() map[string]string
 }
 
+func pruneG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
+	meta := g8s.getMeta()
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: meta.Namespace,
+		Labels:    meta.Labels,
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(&meta, g8sv1alpha1.SchemeGroupVersion.WithKind(meta.Kind)),
+		},
+		Annotations: map[string]string{
+			"controller": "g8s",
+		},
+	}
+}
+
 func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
 	meta := g8s.getMeta()
-	kind := meta.Kind
+	name := strings.ToLower(meta.Kind + "-" + meta.GetName())
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      strings.ToLower(kind + "-" + meta.GetName()),
-			Namespace: meta.GetNamespace(),
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(&meta, g8sv1alpha1.SchemeGroupVersion.WithKind(kind)),
-			},
-			Annotations: map[string]string{
-				"controller": "g8s",
-			},
-		},
+		ObjectMeta: pruneG8sObjectMeta(g8s, name),
 		Immutable:  boolPtr(true),
 		StringData: content,
 		Type:       "Opaque",
@@ -54,18 +62,9 @@ func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
 
 func NewHistorySecret(g8s G8s, content map[string]string) *corev1.Secret {
 	meta := g8s.getMeta()
-	kind := meta.Kind
+	name := strings.ToLower(meta.Kind + "-" + meta.GetName() + "-history")
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      strings.ToLower(kind + "-" + meta.GetName() + "-history"),
-			Namespace: meta.GetNamespace(),
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(&meta, g8sv1alpha1.SchemeGroupVersion.WithKind(kind)),
-			},
-			Annotations: map[string]string{
-				"controller": "g8s",
-			},
-		},
+		ObjectMeta: pruneG8sObjectMeta(g8s, name),
 		Immutable:  boolPtr(true),
 		StringData: content,
 		Type:       "Opaque",
@@ -193,82 +192,92 @@ func (ssh SSHKeyPair) Rotate() map[string]string {
 }
 
 type KubeTLSBundle struct {
-	context.Context
 	v1alpha1.KubeTLSBundle
 	history
-	kubernetes.Clientset
+	certsv1client.CertificatesV1Interface
 }
 
-func NewKubeTLSBundle(ctx context.Context, ktls *v1alpha1.KubeTLSBundle, c kubernetes.Clientset) *KubeTLSBundle {
+func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.CertificatesV1Interface) *KubeTLSBundle {
 	return &KubeTLSBundle{
-		ctx,
 		*ktls,
 		[]string{},
 		c,
 	}
 }
 
-func (ssh KubeTLSBundle) getMeta() Meta {
+func (ktls KubeTLSBundle) getMeta() Meta {
 	return Meta{
 		metav1.TypeMeta{
 			Kind:       "KubeTLSBundle",
 			APIVersion: "api.g8s.io/v1alpha",
 		},
-		ssh.ObjectMeta,
+		ktls.ObjectMeta,
 	}
 }
 
 // errors can be ignored because if there's a problem it will be handled in the controller (processNextWorkItem will requeue it)
 func (ktls KubeTLSBundle) Generate() map[string]string {
-	//	PrivateKey	crypto.PrivateKey
-	//	CertificateSigningRequest	certsv1.CertificateSigningRequestSpec
-	//	Certificate	certsv1.CertificateSigningRequestStatus
-	cryptokey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	key := cryptokey.D.Bytes()
+	ecdsakey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privbytes, _ := x509.MarshalECPrivateKey(ecdsakey)
+	privblock := &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: privbytes,
+	}
+	keypem := string(pem.EncodeToMemory(privblock))
+
+	// reference for how to get the public key
+	// turns out i don't need it but it took a little while to figure out SO I'M KEEPING IT
+	//
+	//pubbytes, _ := x509.MarshalPKIXPublicKey(&ecdsakey.PublicKey)
+	//pubblock := &pem.Block{
+	//	Type:  "PUBLIC KEY",
+	//	Bytes: pubbytes,
+	//}
+	//pubpem := string(pem.EncodeToMemory(pubblock))
 
 	x509csr := x509.CertificateRequest{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		PublicKeyAlgorithm: x509.ECDSA,
-		PublicKey:          cryptokey.PublicKey,
+		PublicKey:          ecdsakey.PublicKey,
 		Subject: pkix.Name{
 			Organization: []string{"g8s"},
 			CommonName:   ktls.Spec.AppName,
 		},
-		//Extensions: []pkix.Extension{{
-		//	// Key Usage, x509 4.2.1.3
-		//	Id:       []int{15},
-		//	Critical: true,
-		//	Value:    []byte("101000000"),
-		//},
-		//{
-		//	// Extended Key Usage, x509 4.2.1.12
-		//	Id:       []int{37},
-		//	Critical: false,
-		//	Value:    []byte("id-kp 2"),
-		//}},
 	}
 
-	rawcsr, _ := x509.CreateCertificateRequest(rand.Reader, &x509csr, key)
-
+	csrbytes, _ := x509.CreateCertificateRequest(rand.Reader, &x509csr, ecdsakey)
+	csrblock := &pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csrbytes,
+	}
+	csrpem := pem.EncodeToMemory(csrblock)
 	kubecsr := certsv1.CertificateSigningRequest{
 		TypeMeta:   ktls.TypeMeta,
-		ObjectMeta: ktls.ObjectMeta,
+		ObjectMeta: pruneG8sObjectMeta(ktls, ktls.ObjectMeta.Name),
 		Spec: certsv1.CertificateSigningRequestSpec{
-			Request:    rawcsr,
+			Request:    csrpem,
 			SignerName: "kubernetes.io/kube-apiserver-client",
-			Usages:     []certsv1.KeyUsage{certsv1.UsageDigitalSignature, certsv1.UsageKeyEncipherment},
+			Usages:     []certsv1.KeyUsage{certsv1.UsageClientAuth, certsv1.UsageDigitalSignature, certsv1.UsageKeyEncipherment},
 		},
 	}
-	pendingcsr, _ := ktls.Clientset.CertificatesV1().CertificateSigningRequests().Create(ktls.Context, &kubecsr, metav1.CreateOptions{})
-	approvedcsr, _ := ktls.Clientset.CertificatesV1().CertificateSigningRequests().UpdateApproval(ktls.Context, pendingcsr.ObjectMeta.Name, pendingcsr, metav1.UpdateOptions{})
-	cert := approvedcsr.Status.Certificate
-
-	//cacm, _ := ktls.Clientset.CoreV1().ConfigMaps(ktls.ObjectMeta.Namespace).Get(ktls.Context, "kube-root-ca.crt", metav1.GetOptions{})
-	//ca := cacm.Data["ca.crt"]
+	pendingcsr, err := ktls.CertificateSigningRequests().Create(context.TODO(), &kubecsr, metav1.CreateOptions{})
+	if err != nil { // pendingcsr already exists
+		pendingcsr, _ = ktls.CertificateSigningRequests().Get(context.TODO(), kubecsr.ObjectMeta.Name, metav1.GetOptions{})
+	}
+	pendingcsr.Status.Conditions = append(pendingcsr.Status.Conditions, certsv1.CertificateSigningRequestCondition{
+		Type:           certsv1.CertificateApproved,
+		Status:         "True",
+		Reason:         "G8s Approved",
+		Message:        "This CSR was generated as part of a KubeTLSBundle Object and approved by g8s-controller",
+		LastUpdateTime: metav1.Now(),
+	})
+	approvedcsr, err := ktls.CertificateSigningRequests().UpdateApproval(context.TODO(), pendingcsr.ObjectMeta.Name, pendingcsr, metav1.UpdateOptions{})
+	certpem := string(approvedcsr.Status.Certificate)
+	fmt.Println(approvedcsr, err, certpem)
 
 	return map[string]string{
-		"key.pem":  string(key),
-		"cert.pem": string(cert),
+		"key.pem":  keypem,
+		"cert.pem": certpem,
 	}
 }
 
