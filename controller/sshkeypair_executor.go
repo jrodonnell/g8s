@@ -129,6 +129,9 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 		bContent["ssh.key"] = hContent["ssh.key-0"]
 
 		backend, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, internalv1alpha1.NewBackendSecret(g8sSSHKP, bContent), metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
 		history, err = c.Client.kubeClientset.CoreV1().Secrets(sshKeyPair.Namespace).Create(ctx, internalv1alpha1.NewHistorySecret(g8sSSHKP, hContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")

@@ -130,6 +130,9 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 		bContent["password"] = hContent["password-0"]
 
 		backend, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, internalv1alpha1.NewBackendSecret(g8sLogin, bContent), metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
 		history, err = c.Client.kubeClientset.CoreV1().Secrets(login.Namespace).Create(ctx, internalv1alpha1.NewHistorySecret(g8sLogin, hContent), metav1.CreateOptions{})
 	} else if errors.IsNotFound(berr) { // backend dne but history does, rebuild backend from history
 		logger.V(4).Info("Create backend Secret resources from history")
