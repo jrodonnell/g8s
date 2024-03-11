@@ -1,0 +1,6 @@
+apiVersion: api.g8s.io/v1alpha1
+kind: KubeTLSBundle
+metadata:
+  name: g8s
+spec:
+  appname: "g8s"
