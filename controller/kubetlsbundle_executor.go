@@ -123,14 +123,15 @@ func (c *Controller) kubeTLSBundleSyncHandler(ctx context.Context, key string) e
 
 	g8sKubeTLSBundle := *internalv1alpha1.NewKubeTLSBundle(kubeTLSBundle, c.Client.kubeClientset.CertificatesV1())
 
-	// Create the CSR object needed to create the certificate
-	if errors.IsNotFound(csrerr) {
-		go newCSR(g8sKubeTLSBundle)
-	}
-
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
-		logger.V(4).Info("Create backend and history Secret resources")
+		logger.V(4).Info("Create backend and history Secret resources and CSR")
+
+		// Create the CSR object needed to create the certificate
+		if errors.IsNotFound(csrerr) {
+			go newCSR(g8sKubeTLSBundle)
+		}
+
 		hContent := g8sKubeTLSBundle.Rotate()
 		bContent := make(map[string]string)
 		bContent["key.pem"] = hContent["key.pem-0"]
