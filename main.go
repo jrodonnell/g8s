@@ -16,11 +16,6 @@ import (
 	"github.com/jrodonnell/g8s/controller"
 	clientset "github.com/jrodonnell/g8s/controller/generated/clientset/versioned"
 	informers "github.com/jrodonnell/g8s/controller/generated/informers/externalversions"
-	// "encoding/json"
-	// "fmt"
-	// "github.com/jrodonnell/g8s/pkg/config"
-	// "reflect"
-	// "github.com/jrodonnell/g8/pkg/qanda"
 )
 
 var (
@@ -62,6 +57,7 @@ func main() {
 		g8sInformerFactory.Api().V1alpha1().KubeTLSBundles(),
 		g8sInformerFactory.Api().V1alpha1().Logins(),
 		g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
+		kubeInformerFactory.Certificates().V1().CertificateSigningRequests(),
 		kubeInformerFactory.Rbac().V1().ClusterRoles(),
 		kubeInformerFactory.Admissionregistration().V1().MutatingWebhookConfigurations(),
 		kubeInformerFactory.Core().V1().Secrets(),

@@ -92,7 +92,7 @@ func (c *Controller) allowlistSyncHandler(ctx context.Context, key string) error
 	}
 
 	// Get the Allowlist resource with this namespace/name
-	allowlistFromLister, err := c.allowlistsLister.Allowlists(namespace).Get(name)
+	allowlistFromLister, err := c.allowlistLister.Allowlists(namespace).Get(name)
 	fmt.Println("lfl: ", allowlistFromLister)
 	if err != nil {
 		// The Allowlist resource may no longer exist, in which case we stop
@@ -114,8 +114,8 @@ func (c *Controller) allowlistSyncHandler(ctx context.Context, key string) error
 	historyName := "allowlist-" + allowlist.ObjectMeta.Name + "-history"
 
 	// Get the backend Secret and history Secret with this namespace/name
-	backendFromLister, berr := c.secretsLister.Secrets(allowlist.Namespace).Get(backendName)
-	historyFromLister, herr := c.secretsLister.Secrets(allowlist.Namespace).Get(historyName)
+	backendFromLister, berr := c.secretLister.Secrets(allowlist.Namespace).Get(backendName)
+	historyFromLister, herr := c.secretLister.Secrets(allowlist.Namespace).Get(historyName)
 
 	// DeepCopy for safety
 	backend := backendFromLister.DeepCopy()
@@ -161,7 +161,7 @@ func (c *Controller) allowlistSyncHandler(ctx context.Context, key string) error
 	}
 
 	// Get the ClusterRole for this Allowlist
-	_, crerr := c.clusterRolesLister.Get(backendName)
+	_, crerr := c.clusterRoleLister.Get(backendName)
 
 	// if ClusterRole does not exist, create it
 	if errors.IsNotFound(crerr) {
@@ -244,7 +244,7 @@ func (c *Controller) handleAllowlistObject(obj interface{}) {
 			return
 		}
 
-		allowlist, err := c.allowlistsLister.Allowlists(object.GetNamespace()).Get(ownerRef.Name)
+		allowlist, err := c.allowlistLister.Allowlists(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "allowlist", ownerRef.Name)
 			return

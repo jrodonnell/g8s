@@ -18,6 +18,7 @@ import (
 	"k8s.io/klog/v2"
 
 	admissionregistrationinformers "k8s.io/client-go/informers/admissionregistration/v1"
+	certinformers "k8s.io/client-go/informers/certificates/v1"
 	secretinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
@@ -43,6 +44,7 @@ func NewController(
 	kubeTLSBundleInformer informers.KubeTLSBundleInformer,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
+	certificateSigningRequestInformer certinformers.CertificateSigningRequestInformer,
 	clusterRoleInformer rbacinformers.ClusterRoleInformer,
 	mutatingWebhookConfigurationInformer admissionregistrationinformers.MutatingWebhookConfigurationInformer,
 	secretInformer secretinformers.SecretInformer) *Controller {
@@ -73,28 +75,31 @@ func NewController(
 
 			// informers & listers for our custom types
 			allowlistInformer:     allowlistInformer,
-			allowlistsLister:      allowlistInformer.Lister(),
-			allowlistsSynced:      allowlistInformer.Informer().HasSynced,
+			allowlistLister:       allowlistInformer.Lister(),
+			allowlistSynced:       allowlistInformer.Informer().HasSynced,
 			kubeTLSBundleInformer: kubeTLSBundleInformer,
-			kubeTLSBundlesLister:  kubeTLSBundleInformer.Lister(),
-			kubeTLSBundlesSynced:  kubeTLSBundleInformer.Informer().HasSynced,
+			kubeTLSBundleLister:   kubeTLSBundleInformer.Lister(),
+			kubeTLSBundleSynced:   kubeTLSBundleInformer.Informer().HasSynced,
 			loginInformer:         loginInformer,
-			loginsLister:          loginInformer.Lister(),
-			loginsSynced:          loginInformer.Informer().HasSynced,
+			loginLister:           loginInformer.Lister(),
+			loginSynced:           loginInformer.Informer().HasSynced,
 			sshKeyPairInformer:    sshKeyPairInformer,
-			sshKeyPairsLister:     sshKeyPairInformer.Lister(),
-			sshKeyPairsSynced:     sshKeyPairInformer.Informer().HasSynced,
+			sshKeyPairLister:      sshKeyPairInformer.Lister(),
+			sshKeyPairSynced:      sshKeyPairInformer.Informer().HasSynced,
 
 			// informers & listers for our backing types
+			certificateSigningRequestInformer:    certificateSigningRequestInformer,
+			certificateSigningRequestLister:      certificateSigningRequestInformer.Lister(),
+			certificateSigningRequestSynced:      certificateSigningRequestInformer.Informer().HasSynced,
 			clusterRoleInformer:                  clusterRoleInformer,
-			clusterRolesLister:                   clusterRoleInformer.Lister(),
-			clusterRolesSynced:                   clusterRoleInformer.Informer().HasSynced,
+			clusterRoleLister:                    clusterRoleInformer.Lister(),
+			clusterRoleSynced:                    clusterRoleInformer.Informer().HasSynced,
 			mutatingWebhookConfigurationInformer: mutatingWebhookConfigurationInformer,
-			mutatingWebhookConfigurationsLister:  mutatingWebhookConfigurationInformer.Lister(),
-			mutatingWebhookConfigurationsSynced:  mutatingWebhookConfigurationInformer.Informer().HasSynced,
+			mutatingWebhookConfigurationLister:   mutatingWebhookConfigurationInformer.Lister(),
+			mutatingWebhookConfigurationSynced:   mutatingWebhookConfigurationInformer.Informer().HasSynced,
 			secretInformer:                       secretInformer,
-			secretsLister:                        secretInformer.Lister(),
-			secretsSynced:                        secretInformer.Informer().HasSynced,
+			secretLister:                         secretInformer.Lister(),
+			secretSynced:                         secretInformer.Informer().HasSynced,
 		},
 		Executor: Executor{
 			allowlistWorkqueue:     workqueue.NewNamedRateLimitingQueue(ratelimiter, "Allowlist"),

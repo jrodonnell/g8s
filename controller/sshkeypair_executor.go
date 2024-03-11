@@ -92,7 +92,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	}
 
 	// Get the SSHKeyPair resource with this namespace/name
-	sshKeyPairFromLister, err := c.sshKeyPairsLister.SSHKeyPairs(namespace).Get(name)
+	sshKeyPairFromLister, err := c.sshKeyPairLister.SSHKeyPairs(namespace).Get(name)
 	if err != nil {
 		// The SSHKeyPair resource may no longer exist, in which case we stop
 		// processing.
@@ -111,8 +111,8 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	historyName := "sshkeypair-" + sshKeyPair.ObjectMeta.Name + "-history"
 
 	// Get the backend Secret and history Secret with this namespace/name
-	backendFromLister, berr := c.secretsLister.Secrets(sshKeyPair.Namespace).Get(backendName)
-	historyFromLister, herr := c.secretsLister.Secrets(sshKeyPair.Namespace).Get(historyName)
+	backendFromLister, berr := c.secretLister.Secrets(sshKeyPair.Namespace).Get(backendName)
+	historyFromLister, herr := c.secretLister.Secrets(sshKeyPair.Namespace).Get(historyName)
 
 	// DeepCopy for safety
 	backend := backendFromLister.DeepCopy()
@@ -166,7 +166,7 @@ func (c *Controller) sshKeyPairSyncHandler(ctx context.Context, key string) erro
 	}
 
 	// Get the ClusterRole for this SSHKeyPair
-	_, crerr := c.clusterRolesLister.Get(backendName)
+	_, crerr := c.clusterRoleLister.Get(backendName)
 
 	// if ClusterRole does not exist, create it
 	if errors.IsNotFound(crerr) {
@@ -249,7 +249,7 @@ func (c *Controller) handleSSHKeyPairObject(obj interface{}) {
 			return
 		}
 
-		sshKeyPair, err := c.sshKeyPairsLister.SSHKeyPairs(object.GetNamespace()).Get(ownerRef.Name)
+		sshKeyPair, err := c.sshKeyPairLister.SSHKeyPairs(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "sshkeypair", ownerRef.Name)
 			return

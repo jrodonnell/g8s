@@ -93,7 +93,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	}
 
 	// Get the Login resource with this namespace/name
-	loginFromLister, err := c.loginsLister.Logins(namespace).Get(name)
+	loginFromLister, err := c.loginLister.Logins(namespace).Get(name)
 	if err != nil {
 		// The Login resource may no longer exist, in which case we stop
 		// processing.
@@ -112,8 +112,8 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	historyName := "login-" + login.ObjectMeta.Name + "-history"
 
 	// Get the backend Secret and history Secret with this namespace/name
-	backendFromLister, berr := c.secretsLister.Secrets(login.Namespace).Get(backendName)
-	historyFromLister, herr := c.secretsLister.Secrets(login.Namespace).Get(historyName)
+	backendFromLister, berr := c.secretLister.Secrets(login.Namespace).Get(backendName)
+	historyFromLister, herr := c.secretLister.Secrets(login.Namespace).Get(historyName)
 
 	// DeepCopy for safety
 	backend := backendFromLister.DeepCopy()
@@ -166,7 +166,7 @@ func (c *Controller) loginSyncHandler(ctx context.Context, key string) error {
 	}
 
 	// Get the ClusterRole for this Login
-	_, crerr := c.clusterRolesLister.Get(backendName)
+	_, crerr := c.clusterRoleLister.Get(backendName)
 
 	// if ClusterRole does not exist, create it
 	if errors.IsNotFound(crerr) {
@@ -249,7 +249,7 @@ func (c *Controller) handleLoginObject(obj interface{}) {
 			return
 		}
 
-		login, err := c.loginsLister.Logins(object.GetNamespace()).Get(ownerRef.Name)
+		login, err := c.loginLister.Logins(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			logger.V(4).Info("Ignore orphaned object", "object", klog.KObj(object), "login", ownerRef.Name)
 			return

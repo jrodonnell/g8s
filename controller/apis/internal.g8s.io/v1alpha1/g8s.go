@@ -1,14 +1,12 @@
 package v1alpha1
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -16,7 +14,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/password"
 	"github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
 	g8sv1alpha1 "github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
-	certsv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	certsv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
@@ -34,7 +31,7 @@ type G8s interface {
 	Rotate() map[string]string
 }
 
-func pruneG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
+func PruneG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
 	meta := g8s.getMeta()
 	return metav1.ObjectMeta{
 		Name:      name,
@@ -53,7 +50,7 @@ func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
 	meta := g8s.getMeta()
 	name := strings.ToLower(meta.Kind + "-" + meta.GetName())
 	return &corev1.Secret{
-		ObjectMeta: pruneG8sObjectMeta(g8s, name),
+		ObjectMeta: PruneG8sObjectMeta(g8s, name),
 		Immutable:  boolPtr(true),
 		StringData: content,
 		Type:       "Opaque",
@@ -64,7 +61,7 @@ func NewHistorySecret(g8s G8s, content map[string]string) *corev1.Secret {
 	meta := g8s.getMeta()
 	name := strings.ToLower(meta.Kind + "-" + meta.GetName() + "-history")
 	return &corev1.Secret{
-		ObjectMeta: pruneG8sObjectMeta(g8s, name),
+		ObjectMeta: PruneG8sObjectMeta(g8s, name),
 		Immutable:  boolPtr(true),
 		StringData: content,
 		Type:       "Opaque",
@@ -195,6 +192,8 @@ type KubeTLSBundle struct {
 	v1alpha1.KubeTLSBundle
 	history
 	certsv1client.CertificatesV1Interface
+	CSRPEM  chan []byte
+	CertPEM chan []byte
 }
 
 func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.CertificatesV1Interface) *KubeTLSBundle {
@@ -202,6 +201,8 @@ func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.Certificates
 		*ktls,
 		[]string{},
 		c,
+		make(chan []byte),
+		make(chan []byte),
 	}
 }
 
@@ -251,29 +252,13 @@ func (ktls KubeTLSBundle) Generate() map[string]string {
 		Bytes: csrbytes,
 	}
 	csrpem := pem.EncodeToMemory(csrblock)
-	kubecsr := certsv1.CertificateSigningRequest{
-		TypeMeta:   ktls.TypeMeta,
-		ObjectMeta: pruneG8sObjectMeta(ktls, ktls.ObjectMeta.Name),
-		Spec: certsv1.CertificateSigningRequestSpec{
-			Request:    csrpem,
-			SignerName: "kubernetes.io/kube-apiserver-client",
-			Usages:     []certsv1.KeyUsage{certsv1.UsageClientAuth, certsv1.UsageDigitalSignature, certsv1.UsageKeyEncipherment},
-		},
-	}
-	pendingcsr, err := ktls.CertificateSigningRequests().Create(context.TODO(), &kubecsr, metav1.CreateOptions{})
-	if err != nil { // pendingcsr already exists
-		pendingcsr, _ = ktls.CertificateSigningRequests().Get(context.TODO(), kubecsr.ObjectMeta.Name, metav1.GetOptions{})
-	}
-	pendingcsr.Status.Conditions = append(pendingcsr.Status.Conditions, certsv1.CertificateSigningRequestCondition{
-		Type:           certsv1.CertificateApproved,
-		Status:         "True",
-		Reason:         "G8s Approved",
-		Message:        "This CSR was generated as part of a KubeTLSBundle Object and approved by g8s-controller",
-		LastUpdateTime: metav1.Now(),
-	})
-	approvedcsr, err := ktls.CertificateSigningRequests().UpdateApproval(context.TODO(), pendingcsr.ObjectMeta.Name, pendingcsr, metav1.UpdateOptions{})
-	certpem := string(approvedcsr.Status.Certificate)
-	fmt.Println(approvedcsr, err, certpem)
+
+	// write PEM-encoded CSR to chan, wait for controller to return with PEM-encoded cert
+	ktls.CSRPEM <- csrpem
+	certpem := string(<-ktls.CertPEM)
+
+	close(ktls.CSRPEM)
+	close(ktls.CertPEM)
 
 	return map[string]string{
 		"key.pem":  keypem,

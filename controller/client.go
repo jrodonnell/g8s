@@ -6,11 +6,13 @@ import (
 	listers "github.com/jrodonnell/g8s/controller/generated/listers/api.g8s.io/v1alpha1"
 
 	admissionregistrationinformers "k8s.io/client-go/informers/admissionregistration/v1"
+	certinformers "k8s.io/client-go/informers/certificates/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
 	"k8s.io/client-go/kubernetes"
 	admissionregistrationlisters "k8s.io/client-go/listers/admissionregistration/v1"
+	certlisters "k8s.io/client-go/listers/certificates/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	rbaclisters "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
@@ -29,27 +31,30 @@ type Client struct {
 	kubeTLSBundleInformer                informers.KubeTLSBundleInformer
 	loginInformer                        informers.LoginInformer
 	sshKeyPairInformer                   informers.SSHKeyPairInformer
+	certificateSigningRequestInformer    certinformers.CertificateSigningRequestInformer
 	clusterRoleInformer                  rbacinformers.ClusterRoleInformer
 	mutatingWebhookConfigurationInformer admissionregistrationinformers.MutatingWebhookConfigurationInformer
 	secretInformer                       coreinformers.SecretInformer
 
 	// listers for our custom types
-	allowlistsLister     listers.AllowlistLister
-	allowlistsSynced     cache.InformerSynced
-	kubeTLSBundlesLister listers.KubeTLSBundleLister
-	kubeTLSBundlesSynced cache.InformerSynced
-	loginsLister         listers.LoginLister
-	loginsSynced         cache.InformerSynced
-	sshKeyPairsLister    listers.SSHKeyPairLister
-	sshKeyPairsSynced    cache.InformerSynced
+	allowlistLister     listers.AllowlistLister
+	allowlistSynced     cache.InformerSynced
+	kubeTLSBundleLister listers.KubeTLSBundleLister
+	kubeTLSBundleSynced cache.InformerSynced
+	loginLister         listers.LoginLister
+	loginSynced         cache.InformerSynced
+	sshKeyPairLister    listers.SSHKeyPairLister
+	sshKeyPairSynced    cache.InformerSynced
 
 	// listers for k8s types owned by our custom types
-	clusterRolesLister                  rbaclisters.ClusterRoleLister
-	clusterRolesSynced                  cache.InformerSynced
-	mutatingWebhookConfigurationsLister admissionregistrationlisters.MutatingWebhookConfigurationLister
-	mutatingWebhookConfigurationsSynced cache.InformerSynced
-	secretsLister                       corelisters.SecretLister
-	secretsSynced                       cache.InformerSynced
+	certificateSigningRequestLister    certlisters.CertificateSigningRequestLister
+	certificateSigningRequestSynced    cache.InformerSynced
+	clusterRoleLister                  rbaclisters.ClusterRoleLister
+	clusterRoleSynced                  cache.InformerSynced
+	mutatingWebhookConfigurationLister admissionregistrationlisters.MutatingWebhookConfigurationLister
+	mutatingWebhookConfigurationSynced cache.InformerSynced
+	secretLister                       corelisters.SecretLister
+	secretSynced                       cache.InformerSynced
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
