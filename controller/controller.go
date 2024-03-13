@@ -2,12 +2,14 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -22,6 +24,8 @@ import (
 	secretinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
+	g8sv1alpha1 "github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
+	internalv1alpha1 "github.com/jrodonnell/g8s/controller/apis/internal.g8s.io/v1alpha1"
 	clientset "github.com/jrodonnell/g8s/controller/generated/clientset/versioned"
 	g8sscheme "github.com/jrodonnell/g8s/controller/generated/clientset/versioned/scheme"
 	informers "github.com/jrodonnell/g8s/controller/generated/informers/externalversions/api.g8s.io/v1alpha1"
@@ -116,6 +120,23 @@ func NewController(
 		AddFunc: controller.enqueueKubeTLSBundle,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueKubeTLSBundle(new)
+		},
+		DeleteFunc: func(obj interface{}) {
+			ktls, ok := obj.(*g8sv1alpha1.KubeTLSBundle)
+			g8sktls := internalv1alpha1.NewKubeTLSBundle(ktls, kubeClientset.CertificatesV1())
+			meta := g8sktls.GetMeta()
+			name := strings.ToLower(meta.TypeMeta.Kind + "-" + meta.ObjectMeta.Name)
+			if !ok {
+				logger.Error(nil, "obj is not a KubeTLSBundle")
+			}
+			err := controller.kubeClientset.RbacV1().ClusterRoles().Delete(context.TODO(), name, metav1.DeleteOptions{})
+			if err != nil {
+				logger.Error(err, "Error deleting ClusterRole backing KubeTLSBundle: "+name)
+			}
+			err = controller.kubeClientset.CertificatesV1().CertificateSigningRequests().Delete(context.TODO(), name, metav1.DeleteOptions{})
+			if err != nil {
+				logger.Error(err, "Error deleting CertificateSigningRequest backing KubeTLSBundle: "+name)
+			}
 		},
 	})
 

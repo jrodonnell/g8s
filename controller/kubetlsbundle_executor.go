@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	g8sv1alpha1 "github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
 	internalv1alpha1 "github.com/jrodonnell/g8s/controller/apis/internal.g8s.io/v1alpha1"
@@ -121,7 +122,7 @@ func (c *Controller) kubeTLSBundleSyncHandler(ctx context.Context, key string) e
 	backend := backendFromLister.DeepCopy()
 	history := historyFromLister.DeepCopy()
 
-	g8sKubeTLSBundle := *internalv1alpha1.NewKubeTLSBundle(kubeTLSBundle, c.Client.kubeClientset.CertificatesV1())
+	g8sKubeTLSBundle := internalv1alpha1.NewKubeTLSBundle(kubeTLSBundle, c.Client.kubeClientset.CertificatesV1())
 
 	// If the backend and history resources don't exist, create them
 	if errors.IsNotFound(berr) && errors.IsNotFound(herr) {
@@ -272,18 +273,23 @@ func (c *Controller) handleKubeTLSBundleObject(obj interface{}) {
 	}
 }
 
-func newCSR(ktls internalv1alpha1.KubeTLSBundle) {
+func newCSR(ktls *internalv1alpha1.KubeTLSBundle) {
 	csrpem := <-ktls.CSRPEM
+	name := strings.ToLower(ktls.TypeMeta.GetObjectKind().GroupVersionKind().Kind + "-" + ktls.ObjectMeta.Name)
 	kubecsr := certsv1.CertificateSigningRequest{
 		TypeMeta:   ktls.TypeMeta,
-		ObjectMeta: internalv1alpha1.PruneG8sObjectMeta(ktls, ktls.ObjectMeta.Name),
+		ObjectMeta: internalv1alpha1.NewG8sObjectMeta(ktls, name),
 		Spec: certsv1.CertificateSigningRequestSpec{
 			Request:    csrpem,
 			SignerName: "kubernetes.io/kube-apiserver-client",
 			Usages:     []certsv1.KeyUsage{certsv1.UsageClientAuth, certsv1.UsageDigitalSignature, certsv1.UsageKeyEncipherment},
 		},
 	}
-	pendingcsr, _ := ktls.CertificateSigningRequests().Create(context.TODO(), &kubecsr, metav1.CreateOptions{})
+	pendingcsr, err := ktls.CertificateSigningRequests().Create(context.TODO(), &kubecsr, metav1.CreateOptions{})
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	pendingcsr.Status.Conditions = append(pendingcsr.Status.Conditions, certsv1.CertificateSigningRequestCondition{
 		Type:           certsv1.CertificateApproved,
@@ -303,6 +309,5 @@ func newCSR(ktls internalv1alpha1.KubeTLSBundle) {
 			approvedcsr, _ = ktls.CertificateSigningRequests().Get(context.TODO(), pendingcsr.ObjectMeta.Name, metav1.GetOptions{})
 			certpem = approvedcsr.Status.Certificate
 		}
-		fmt.Println(certpem)
 	}
 }

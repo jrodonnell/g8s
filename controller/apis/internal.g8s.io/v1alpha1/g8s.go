@@ -26,13 +26,13 @@ type Meta struct {
 
 // generators for gates
 type G8s interface {
-	getMeta() Meta
+	GetMeta() Meta
 	Generate() map[string]string
 	Rotate() map[string]string
 }
 
-func PruneG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
-	meta := g8s.getMeta()
+func NewG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
+	meta := g8s.GetMeta()
 	return metav1.ObjectMeta{
 		Name:      name,
 		Namespace: meta.Namespace,
@@ -47,10 +47,10 @@ func PruneG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
 }
 
 func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
-	meta := g8s.getMeta()
-	name := strings.ToLower(meta.Kind + "-" + meta.GetName())
+	meta := g8s.GetMeta()
+	name := strings.ToLower(meta.Kind + "-" + meta.Name)
 	return &corev1.Secret{
-		ObjectMeta: PruneG8sObjectMeta(g8s, name),
+		ObjectMeta: NewG8sObjectMeta(g8s, name),
 		Immutable:  boolPtr(true),
 		StringData: content,
 		Type:       "Opaque",
@@ -58,10 +58,10 @@ func NewBackendSecret(g8s G8s, content map[string]string) *corev1.Secret {
 }
 
 func NewHistorySecret(g8s G8s, content map[string]string) *corev1.Secret {
-	meta := g8s.getMeta()
-	name := strings.ToLower(meta.Kind + "-" + meta.GetName() + "-history")
+	meta := g8s.GetMeta()
+	name := strings.ToLower(meta.Kind + "-" + meta.Name + "-history")
 	return &corev1.Secret{
-		ObjectMeta: PruneG8sObjectMeta(g8s, name),
+		ObjectMeta: NewG8sObjectMeta(g8s, name),
 		Immutable:  boolPtr(true),
 		StringData: content,
 		Type:       "Opaque",
@@ -81,18 +81,19 @@ type Login struct {
 }
 
 func NewLogin(l *v1alpha1.Login) *Login {
+	l.TypeMeta = metav1.TypeMeta{
+		Kind:       "Login",
+		APIVersion: "api.g8s.io/v1alpha",
+	}
 	return &Login{
 		*l,
 		[]string{},
 	}
 }
 
-func (l Login) getMeta() Meta {
+func (l Login) GetMeta() Meta {
 	return Meta{
-		metav1.TypeMeta{
-			Kind:       "Login",
-			APIVersion: "api.g8s.io/v1alpha",
-		},
+		l.TypeMeta,
 		l.ObjectMeta,
 	}
 }
@@ -129,19 +130,20 @@ type SSHKeyPair struct {
 	history
 }
 
-func NewSSHKeyPair(s *v1alpha1.SSHKeyPair) *SSHKeyPair {
+func NewSSHKeyPair(ssh *v1alpha1.SSHKeyPair) *SSHKeyPair {
+	ssh.TypeMeta = metav1.TypeMeta{
+		Kind:       "SSHKeyPair",
+		APIVersion: "api.g8s.io/v1alpha",
+	}
 	return &SSHKeyPair{
-		*s,
+		*ssh,
 		[]string{},
 	}
 }
 
-func (ssh SSHKeyPair) getMeta() Meta {
+func (ssh SSHKeyPair) GetMeta() Meta {
 	return Meta{
-		metav1.TypeMeta{
-			Kind:       "SSHKeyPair",
-			APIVersion: "api.g8s.io/v1alpha",
-		},
+		ssh.TypeMeta,
 		ssh.ObjectMeta,
 	}
 }
@@ -197,6 +199,10 @@ type KubeTLSBundle struct {
 }
 
 func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.CertificatesV1Interface) *KubeTLSBundle {
+	ktls.TypeMeta = metav1.TypeMeta{
+		Kind:       "KubeTLSBundle",
+		APIVersion: "api.g8s.io/v1alpha",
+	}
 	return &KubeTLSBundle{
 		*ktls,
 		[]string{},
@@ -206,12 +212,9 @@ func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.Certificates
 	}
 }
 
-func (ktls KubeTLSBundle) getMeta() Meta {
+func (ktls KubeTLSBundle) GetMeta() Meta {
 	return Meta{
-		metav1.TypeMeta{
-			Kind:       "KubeTLSBundle",
-			APIVersion: "api.g8s.io/v1alpha",
-		},
+		ktls.TypeMeta,
 		ktls.ObjectMeta,
 	}
 }
