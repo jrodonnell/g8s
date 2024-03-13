@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/keygen"
 	"github.com/crossplane/crossplane-runtime/pkg/password"
 	"github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
-	g8sv1alpha1 "github.com/jrodonnell/g8s/controller/apis/api.g8s.io/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	certsv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
@@ -38,7 +37,7 @@ func NewG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
 		Namespace: meta.Namespace,
 		Labels:    meta.Labels,
 		OwnerReferences: []metav1.OwnerReference{
-			*metav1.NewControllerRef(&meta, g8sv1alpha1.SchemeGroupVersion.WithKind(meta.Kind)),
+			*metav1.NewControllerRef(&meta, v1alpha1.SchemeGroupVersion.WithKind(meta.Kind)),
 		},
 		Annotations: map[string]string{
 			"controller": "g8s",
