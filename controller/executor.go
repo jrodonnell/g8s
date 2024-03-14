@@ -20,6 +20,9 @@ import (
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a CR is synced
 	SuccessSynced = "Synced"
+	// SuccessfulDelete is used when an object and all its dependents are successfully
+	// deleted
+	SuccessDeleted = "Deleted"
 	// ErrResourceExists is used as part of the Event 'reason' when a CR fails
 	// to sync due to a Secret of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
@@ -30,6 +33,9 @@ const (
 	// MessageResourceSynced is the message used for an Event fired when a CR
 	// is synced successfully
 	MessageResourceSynced = "Resource synced successfully"
+	// MessageResourceDeleted is the message used for an Event fired when a CR
+	// is synced successfully
+	MessageResourceDeleted = "Resource and all dependent objects deleted successfully"
 )
 
 type Executor struct {

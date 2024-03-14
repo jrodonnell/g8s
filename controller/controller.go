@@ -137,6 +137,7 @@ func NewController(
 			if err != nil {
 				logger.Error(err, "Error deleting CertificateSigningRequest backing KubeTLSBundle: "+name)
 			}
+			controller.recorder.Event(ktls, corev1.EventTypeNormal, SuccessDeleted, MessageResourceDeleted)
 		},
 	})
 
@@ -146,6 +147,20 @@ func NewController(
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueLogin(new)
 		},
+		DeleteFunc: func(obj interface{}) {
+			login, ok := obj.(*g8sv1alpha1.Login)
+			g8slogin := internalv1alpha1.NewLogin(login)
+			meta := g8slogin.GetMeta()
+			name := strings.ToLower(meta.TypeMeta.Kind + "-" + meta.ObjectMeta.Name)
+			if !ok {
+				logger.Error(nil, "obj is not a Login")
+			}
+			err := controller.kubeClientset.RbacV1().ClusterRoles().Delete(context.TODO(), name, metav1.DeleteOptions{})
+			if err != nil {
+				logger.Error(err, "Error deleting ClusterRole backing Login: "+name)
+			}
+			controller.recorder.Event(login, corev1.EventTypeNormal, SuccessDeleted, MessageResourceDeleted)
+		},
 	})
 
 	// Set up an event handler for when SSHkeypair resources change
@@ -153,6 +168,20 @@ func NewController(
 		AddFunc: controller.enqueueSSHKeyPair,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueSSHKeyPair(new)
+		},
+		DeleteFunc: func(obj interface{}) {
+			ssh, ok := obj.(*g8sv1alpha1.SSHKeyPair)
+			g8sssh := internalv1alpha1.NewSSHKeyPair(ssh)
+			meta := g8sssh.GetMeta()
+			name := strings.ToLower(meta.TypeMeta.Kind + "-" + meta.ObjectMeta.Name)
+			if !ok {
+				logger.Error(nil, "obj is not an SSHKeyPair")
+			}
+			err := controller.kubeClientset.RbacV1().ClusterRoles().Delete(context.TODO(), name, metav1.DeleteOptions{})
+			if err != nil {
+				logger.Error(err, "Error deleting ClusterRole backing SSHKeyPair: "+name)
+			}
+			controller.recorder.Event(ssh, corev1.EventTypeNormal, SuccessDeleted, MessageResourceDeleted)
 		},
 	})
 
