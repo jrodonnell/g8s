@@ -30,6 +30,7 @@ type G8s interface {
 	Rotate() map[string]string
 }
 
+// use to get a standard ObjectMeta when creating objects
 func NewG8sObjectMeta(g8s G8s, name string) metav1.ObjectMeta {
 	meta := g8s.GetMeta()
 	return metav1.ObjectMeta{
@@ -82,7 +83,7 @@ type Login struct {
 func NewLogin(l *v1alpha1.Login) *Login {
 	l.TypeMeta = metav1.TypeMeta{
 		Kind:       "Login",
-		APIVersion: "api.g8s.io/v1alpha",
+		APIVersion: "api.g8s.io/v1alpha1",
 	}
 	return &Login{
 		*l,
@@ -132,7 +133,7 @@ type SSHKeyPair struct {
 func NewSSHKeyPair(ssh *v1alpha1.SSHKeyPair) *SSHKeyPair {
 	ssh.TypeMeta = metav1.TypeMeta{
 		Kind:       "SSHKeyPair",
-		APIVersion: "api.g8s.io/v1alpha",
+		APIVersion: "api.g8s.io/v1alpha1",
 	}
 	return &SSHKeyPair{
 		*ssh,
@@ -200,7 +201,7 @@ type KubeTLSBundle struct {
 func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.CertificatesV1Interface) *KubeTLSBundle {
 	ktls.TypeMeta = metav1.TypeMeta{
 		Kind:       "KubeTLSBundle",
-		APIVersion: "api.g8s.io/v1alpha",
+		APIVersion: "api.g8s.io/v1alpha1",
 	}
 	return &KubeTLSBundle{
 		*ktls,
