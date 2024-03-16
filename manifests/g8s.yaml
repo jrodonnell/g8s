@@ -259,14 +259,16 @@ kind: Deployment
 metadata:
   name: g8s-controller
   namespace: g8s
+  labels:
+    app: g8s-controller
 spec:
   selector:
     matchLabels:
-      api.g8s.io/controller: g8s-controller
+      app: g8s-controller
   template:
     metadata:
       labels:
-        api.g8s.io/controller: g8s-controller # necessary to avoid drain
+        app: g8s-controller
     spec:
       serviceAccountName: g8s
       tolerations:
@@ -285,8 +287,9 @@ spec:
           operator: "Exists"
           effect: "NoExecute"
       containers:
-        - name: g8s-controller
-          image: jrodonnell/g8s-controller:latest
+        - name: controller
+          image: jrodonnell/g8s-runtime:latest
+          args: ["--role", "controller"]
           imagePullPolicy: Always
           securityContext:
             runAsNonRoot: true
@@ -299,33 +302,96 @@ spec:
               drop:
                 - ALL
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g8s-webhook
+  namespace: g8s
+  labels:
+    app: g8s-webhook
+spec:
+  selector:
+    matchLabels:
+      app: g8s-webhook
+  template:
+    metadata:
+      labels:
+        app: g8s-webhook
+    spec:
+      serviceAccountName: g8s
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/controlplane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/etcd"
+          operator: "Exists"
+          effect: "NoExecute"
+      containers:
+        - name: webhook
+          image: jrodonnell/g8s-runtime:latest
+          args: ["--role", "webhook"]
+          ports:
+          - name: https
+            containerPort: 8443
+            protocol: TCP
+          imagePullPolicy: Always
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            seccompProfile: 
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tls-bundle
+              mountPath: "/key.pem"
+              subPath: key.pem
+            - name: tls-bundle
+              mountPath: "cert.pem"
+              subPath: cert.pem
+      volumes:
+        - name: tls-bundle
+          secret:
+            secretName: kubetlsbundle-g8s-webhook
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: g8s-controller
+  name: g8s-webhook
   namespace: g8s
 spec:
   ports:
   - name: https
-    port: 443
+    port: 8443
     protocol: TCP
     targetPort: https
   selector:
-    api.g8s.io/controller: g8s-controller
+    app: g8s-webhook
   type: ClusterIP
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: mutateme
+  name: g8s-webhook
   labels:
-    app: mutateme
+    app: g8s-webhook
 webhooks:
-  - name: mutateme.default.svc.cluster.local
+  - name: g8s-webhook.g8s.svc.cluster.local
     clientConfig:
       service:
-        name: mutateme
-        namespace: default
+        name: g8s-webhook
+        namespace: g8s
         path: "/mutate"
     rules:
       - operations: ["CREATE"]

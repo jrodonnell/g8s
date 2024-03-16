@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"time"
 
@@ -13,14 +14,16 @@ import (
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	"github.com/jrodonnell/g8s/controller"
-	clientset "github.com/jrodonnell/g8s/controller/generated/clientset/versioned"
-	informers "github.com/jrodonnell/g8s/controller/generated/informers/externalversions"
+	"github.com/jrodonnell/g8s/pkg/controller"
+	clientset "github.com/jrodonnell/g8s/pkg/controller/generated/clientset/versioned"
+	informers "github.com/jrodonnell/g8s/pkg/controller/generated/informers/externalversions"
+	"github.com/jrodonnell/g8s/pkg/webhook"
 )
 
 var (
 	masterURL  string
 	kubeconfig string
+	role       string // must be either 'controller' or 'webhook'
 )
 
 func main() {
@@ -31,50 +34,59 @@ func main() {
 	ctx := signals.SetupSignalHandler()
 	logger := klog.FromContext(ctx)
 
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	if err != nil {
-		logger.Error(err, "Error building kubeconfig")
-		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-	}
+	switch role {
+	case "controller":
+		cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+		if err != nil {
+			logger.Error(err, "Error building kubeconfig")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		logger.Error(err, "Error building kubernetes clientset")
-		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-	}
+		kubeClient, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			logger.Error(err, "Error building kubernetes clientset")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		}
 
-	g8sClient, err := clientset.NewForConfig(cfg)
-	if err != nil {
-		logger.Error(err, "Error building kubernetes clientset")
-		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-	}
+		g8sClient, err := clientset.NewForConfig(cfg)
+		if err != nil {
+			logger.Error(err, "Error building g8s clientset")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	g8sInformerFactory := informers.NewSharedInformerFactory(g8sClient, time.Second*30)
+		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+		g8sInformerFactory := informers.NewSharedInformerFactory(g8sClient, time.Second*30)
 
-	controller := controller.NewController(ctx, kubeClient, g8sClient,
-		g8sInformerFactory.Api().V1alpha1().Allowlists(),
-		g8sInformerFactory.Api().V1alpha1().KubeTLSBundles(),
-		g8sInformerFactory.Api().V1alpha1().Logins(),
-		g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
-		kubeInformerFactory.Certificates().V1().CertificateSigningRequests(),
-		kubeInformerFactory.Rbac().V1().ClusterRoles(),
-		kubeInformerFactory.Admissionregistration().V1().MutatingWebhookConfigurations(),
-		kubeInformerFactory.Core().V1().Secrets(),
-	)
+		controller := controller.NewController(ctx, kubeClient, g8sClient,
+			g8sInformerFactory.Api().V1alpha1().Allowlists(),
+			g8sInformerFactory.Api().V1alpha1().KubeTLSBundles(),
+			g8sInformerFactory.Api().V1alpha1().Logins(),
+			g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
+			kubeInformerFactory.Certificates().V1().CertificateSigningRequests(),
+			kubeInformerFactory.Rbac().V1().ClusterRoles(),
+			kubeInformerFactory.Admissionregistration().V1().MutatingWebhookConfigurations(),
+			kubeInformerFactory.Core().V1().Secrets(),
+		)
 
-	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
-	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	kubeInformerFactory.Start(ctx.Done())
-	g8sInformerFactory.Start(ctx.Done())
+		// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
+		// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
+		kubeInformerFactory.Start(ctx.Done())
+		g8sInformerFactory.Start(ctx.Done())
 
-	if err = controller.Run(ctx, 1); err != nil {
-		logger.Error(err, "Error running controller")
-		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		if err = controller.Run(ctx, 1); err != nil {
+			logger.Error(err, "Error running controller")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		}
+	case "webhook":
+		webhook.Serve(ctx, logger)
+	default:
+		err := errors.New("invalid role")
+		logger.Error(err, "Role must be either 'controller' or 'webhook'")
 	}
 }
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&role, "role", "", "Must be one of 'controller' or 'webhook', tells the progam which one to run as")
 }
