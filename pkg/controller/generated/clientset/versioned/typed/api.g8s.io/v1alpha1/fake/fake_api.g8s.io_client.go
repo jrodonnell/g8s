@@ -31,16 +31,16 @@ func (c *FakeApiV1alpha1) Allowlists(namespace string) v1alpha1.AllowlistInterfa
 	return &FakeAllowlists{c, namespace}
 }
 
-func (c *FakeApiV1alpha1) KubeTLSBundles(namespace string) v1alpha1.KubeTLSBundleInterface {
-	return &FakeKubeTLSBundles{c, namespace}
-}
-
 func (c *FakeApiV1alpha1) Logins(namespace string) v1alpha1.LoginInterface {
 	return &FakeLogins{c, namespace}
 }
 
 func (c *FakeApiV1alpha1) SSHKeyPairs(namespace string) v1alpha1.SSHKeyPairInterface {
 	return &FakeSSHKeyPairs{c, namespace}
+}
+
+func (c *FakeApiV1alpha1) SelfSignedTLSBundles(namespace string) v1alpha1.SelfSignedTLSBundleInterface {
+	return &FakeSelfSignedTLSBundles{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

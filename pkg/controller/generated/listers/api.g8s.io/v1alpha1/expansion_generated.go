@@ -25,14 +25,6 @@ type AllowlistListerExpansion interface{}
 // AllowlistNamespaceLister.
 type AllowlistNamespaceListerExpansion interface{}
 
-// KubeTLSBundleListerExpansion allows custom methods to be added to
-// KubeTLSBundleLister.
-type KubeTLSBundleListerExpansion interface{}
-
-// KubeTLSBundleNamespaceListerExpansion allows custom methods to be added to
-// KubeTLSBundleNamespaceLister.
-type KubeTLSBundleNamespaceListerExpansion interface{}
-
 // LoginListerExpansion allows custom methods to be added to
 // LoginLister.
 type LoginListerExpansion interface{}
@@ -48,3 +40,11 @@ type SSHKeyPairListerExpansion interface{}
 // SSHKeyPairNamespaceListerExpansion allows custom methods to be added to
 // SSHKeyPairNamespaceLister.
 type SSHKeyPairNamespaceListerExpansion interface{}
+
+// SelfSignedTLSBundleListerExpansion allows custom methods to be added to
+// SelfSignedTLSBundleLister.
+type SelfSignedTLSBundleListerExpansion interface{}
+
+// SelfSignedTLSBundleNamespaceListerExpansion allows custom methods to be added to
+// SelfSignedTLSBundleNamespaceLister.
+type SelfSignedTLSBundleNamespaceListerExpansion interface{}

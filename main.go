@@ -59,7 +59,7 @@ func main() {
 
 		controller := controller.NewController(ctx, kubeClient, g8sClient,
 			g8sInformerFactory.Api().V1alpha1().Allowlists(),
-			g8sInformerFactory.Api().V1alpha1().KubeTLSBundles(),
+			g8sInformerFactory.Api().V1alpha1().SelfSignedTLSBundles(),
 			g8sInformerFactory.Api().V1alpha1().Logins(),
 			g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
 			kubeInformerFactory.Certificates().V1().CertificateSigningRequests(),

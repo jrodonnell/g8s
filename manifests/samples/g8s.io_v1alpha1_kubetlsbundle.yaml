@@ -1,5 +1,5 @@
 apiVersion: api.g8s.io/v1alpha1
-kind: KubeTLSBundle
+kind: SelfSignedTLSBundle
 metadata:
   name: g8s
 spec:

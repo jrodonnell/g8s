@@ -48,6 +48,6 @@ func handleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mutated, err := Mutate(body)
-	w.WriteHeader(http.StatusOK)
+	log.Println(mutated)
 	w.Write(mutated)
 }

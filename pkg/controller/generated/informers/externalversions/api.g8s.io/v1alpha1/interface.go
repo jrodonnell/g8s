@@ -25,12 +25,12 @@ import (
 type Interface interface {
 	// Allowlists returns a AllowlistInformer.
 	Allowlists() AllowlistInformer
-	// KubeTLSBundles returns a KubeTLSBundleInformer.
-	KubeTLSBundles() KubeTLSBundleInformer
 	// Logins returns a LoginInformer.
 	Logins() LoginInformer
 	// SSHKeyPairs returns a SSHKeyPairInformer.
 	SSHKeyPairs() SSHKeyPairInformer
+	// SelfSignedTLSBundles returns a SelfSignedTLSBundleInformer.
+	SelfSignedTLSBundles() SelfSignedTLSBundleInformer
 }
 
 type version struct {
@@ -49,11 +49,6 @@ func (v *version) Allowlists() AllowlistInformer {
 	return &allowlistInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// KubeTLSBundles returns a KubeTLSBundleInformer.
-func (v *version) KubeTLSBundles() KubeTLSBundleInformer {
-	return &kubeTLSBundleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
 // Logins returns a LoginInformer.
 func (v *version) Logins() LoginInformer {
 	return &loginInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -62,4 +57,9 @@ func (v *version) Logins() LoginInformer {
 // SSHKeyPairs returns a SSHKeyPairInformer.
 func (v *version) SSHKeyPairs() SSHKeyPairInformer {
 	return &sSHKeyPairInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// SelfSignedTLSBundles returns a SelfSignedTLSBundleInformer.
+func (v *version) SelfSignedTLSBundles() SelfSignedTLSBundleInformer {
+	return &selfSignedTLSBundleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

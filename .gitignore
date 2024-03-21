@@ -21,3 +21,7 @@ bin/
 
 # Go workspace file
 go.work
+
+# stuff i use for local testing
+cert.pem
+key.pem

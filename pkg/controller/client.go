@@ -28,7 +28,7 @@ type Client struct {
 
 	// Informers for each type, just to expose for access
 	allowlistInformer                    informers.AllowlistInformer
-	kubeTLSBundleInformer                informers.KubeTLSBundleInformer
+	selfSignedTLSBundleInformer          informers.SelfSignedTLSBundleInformer
 	loginInformer                        informers.LoginInformer
 	sshKeyPairInformer                   informers.SSHKeyPairInformer
 	certificateSigningRequestInformer    certinformers.CertificateSigningRequestInformer
@@ -37,14 +37,14 @@ type Client struct {
 	secretInformer                       coreinformers.SecretInformer
 
 	// listers for our custom types
-	allowlistLister     listers.AllowlistLister
-	allowlistSynced     cache.InformerSynced
-	kubeTLSBundleLister listers.KubeTLSBundleLister
-	kubeTLSBundleSynced cache.InformerSynced
-	loginLister         listers.LoginLister
-	loginSynced         cache.InformerSynced
-	sshKeyPairLister    listers.SSHKeyPairLister
-	sshKeyPairSynced    cache.InformerSynced
+	allowlistLister           listers.AllowlistLister
+	allowlistSynced           cache.InformerSynced
+	selfSignedTLSBundleLister listers.SelfSignedTLSBundleLister
+	selfSignedTLSBundleSynced cache.InformerSynced
+	loginLister               listers.LoginLister
+	loginSynced               cache.InformerSynced
+	sshKeyPairLister          listers.SSHKeyPairLister
+	sshKeyPairSynced          cache.InformerSynced
 
 	// listers for k8s types owned by our custom types
 	certificateSigningRequestLister    certlisters.CertificateSigningRequestLister

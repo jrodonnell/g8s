@@ -44,10 +44,10 @@ type Executor struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
-	allowlistWorkqueue     workqueue.RateLimitingInterface
-	kubeTLSBundleWorkqueue workqueue.RateLimitingInterface
-	loginWorkqueue         workqueue.RateLimitingInterface
-	sshKeyPairWorkqueue    workqueue.RateLimitingInterface
+	allowlistWorkqueue           workqueue.RateLimitingInterface
+	selfSignedTLSBundleWorkqueue workqueue.RateLimitingInterface
+	loginWorkqueue               workqueue.RateLimitingInterface
+	sshKeyPairWorkqueue          workqueue.RateLimitingInterface
 }
 
 // Run will set up the event handlers for types we are interested in, as well
@@ -74,7 +74,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	// Launch two workers to process At resources
 	for i := 0; i < workers; i++ {
 		go wait.UntilWithContext(ctx, c.runAllowlistWorker, time.Second)
-		go wait.UntilWithContext(ctx, c.runKubeTLSBundleWorker, time.Second)
+		go wait.UntilWithContext(ctx, c.runSelfSignedTLSBundleWorker, time.Second)
 		go wait.UntilWithContext(ctx, c.runLoginWorker, time.Second)
 		go wait.UntilWithContext(ctx, c.runSSHKeyPairWorker, time.Second)
 	}

@@ -7,8 +7,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"math"
+	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/keygen"
 	"github.com/crossplane/crossplane-runtime/pkg/password"
@@ -190,103 +193,160 @@ func (ssh SSHKeyPair) Rotate() map[string]string {
 	return newData
 }
 
-type KubeTLSBundle struct {
-	v1alpha1.KubeTLSBundle
+type SelfSignedTLSBundle struct {
+	v1alpha1.SelfSignedTLSBundle
 	history
-	certsv1client.CertificatesV1Interface
-	CSRPEM  chan []byte
-	CertPEM chan []byte
+	//certsv1client.CertificatesV1Interface
+	//CSRPEM  chan []byte
+	//CertPEM chan []byte
 }
 
-func NewKubeTLSBundle(ktls *v1alpha1.KubeTLSBundle, c certsv1client.CertificatesV1Interface) *KubeTLSBundle {
-	ktls.TypeMeta = metav1.TypeMeta{
-		Kind:       "KubeTLSBundle",
+func NewSelfSignedTLSBundle(sstls *v1alpha1.SelfSignedTLSBundle, c certsv1client.CertificatesV1Interface) *SelfSignedTLSBundle {
+	sstls.TypeMeta = metav1.TypeMeta{
+		Kind:       "SelfSignedTLSBundle",
 		APIVersion: "api.g8s.io/v1alpha1",
 	}
-	return &KubeTLSBundle{
-		*ktls,
+	return &SelfSignedTLSBundle{
+		*sstls,
 		[]string{},
-		c,
-		make(chan []byte),
-		make(chan []byte),
+		//c,
+		//make(chan []byte),
+		//make(chan []byte),
 	}
 }
 
-func (ktls KubeTLSBundle) GetMeta() Meta {
+func (sstls SelfSignedTLSBundle) GetMeta() Meta {
 	return Meta{
-		ktls.TypeMeta,
-		ktls.ObjectMeta,
+		sstls.TypeMeta,
+		sstls.ObjectMeta,
 	}
 }
 
 // errors can be ignored because if there's a problem it will be handled in the controller (processNextWorkItem will requeue it)
-func (ktls KubeTLSBundle) Generate() map[string]string {
-	ecdsakey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	privbytes, _ := x509.MarshalECPrivateKey(ecdsakey)
-	privblock := &pem.Block{
-		Type:  "EC PRIVATE KEY",
-		Bytes: privbytes,
-	}
-	keypem := string(pem.EncodeToMemory(privblock))
-
-	// reference for how to get the public key
-	// turns out i don't need it but it took a little while to figure out SO I'M KEEPING IT
-	//
-	//pubbytes, _ := x509.MarshalPKIXPublicKey(&ecdsakey.PublicKey)
-	//pubblock := &pem.Block{
-	//	Type:  "PUBLIC KEY",
-	//	Bytes: pubbytes,
-	//}
-	//pubpem := string(pem.EncodeToMemory(pubblock))
-
-	x509csr := x509.CertificateRequest{
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		PublicKeyAlgorithm: x509.ECDSA,
-		PublicKey:          ecdsakey.PublicKey,
+func (sstls SelfSignedTLSBundle) Generate() map[string]string {
+	// create private key and self-signed CA cert for signing client's TLS cert
+	ecdsacakey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	serial, _ := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64-1))
+	serial = new(big.Int).Add(serial, big.NewInt(1))
+	x509cacert := &x509.Certificate{
+		SerialNumber: serial,
 		Subject: pkix.Name{
+			CommonName:   sstls.Spec.AppName,
 			Organization: []string{"g8s"},
-			CommonName:   ktls.Spec.AppName,
 		},
+		DNSNames:              sstls.Spec.SANs,
+		NotBefore:             time.Now().UTC(),
+		NotAfter:              time.Now().Add(time.Hour * 24 * 365).UTC(),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	cacertbytes, _ := x509.CreateCertificate(rand.Reader, x509cacert, x509cacert, ecdsacakey.PublicKey, ecdsacakey)
+	x509cacert, _ = x509.ParseCertificate(cacertbytes)
+
+	// use CA cert to sign client's TLS cert
+	ecdsaclientkey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	x509clientcert := &x509.Certificate{
+		Subject: pkix.Name{
+			CommonName:   sstls.Spec.AppName,
+			Organization: []string{"g8s"},
+		},
+		DNSNames:    sstls.Spec.SANs,
+		NotBefore:   time.Now().UTC(),
+		NotAfter:    time.Now().Add(time.Hour * 24 * 365).UTC(),
+		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 
-	csrbytes, _ := x509.CreateCertificateRequest(rand.Reader, &x509csr, ecdsakey)
-	csrblock := &pem.Block{
-		Type:  "CERTIFICATE REQUEST",
-		Bytes: csrbytes,
-	}
-	csrpem := pem.EncodeToMemory(csrblock)
+	clientcertbytes, _ := x509.CreateCertificate(rand.Reader, x509clientcert, x509cacert, ecdsaclientkey.PublicKey, ecdsaclientkey)
 
+	// encode these things to DER strings
+	clientkeybytes, _ := x509.MarshalECPrivateKey(ecdsaclientkey)
+	clientkeyblock := &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: clientkeybytes,
+	}
+	keypem := string(pem.EncodeToMemory(clientkeyblock))
+
+	clientcertblock := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: clientcertbytes,
+	}
+	certpem := string(pem.EncodeToMemory(clientcertblock))
+
+	cacertblock := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cacertbytes,
+	}
+	cacertpem := string(pem.EncodeToMemory(cacertblock))
+
+	/*
+		 reference for how to get the public key
+		 turns out i don't need it but it took a little while to figure out so i'm keeping it here
+		 for reference
+
+		pubbytes, _ := x509.MarshalPKIXPublicKey(&ecdsakey.PublicKey)
+		pubblock := &pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pubbytes,
+		}
+		pubpem := string(pem.EncodeToMemory(pubblock))
+	*/
+	/*
+		reference for creating kube CSR object
+
+		x509csr := x509.CertificateRequest{
+			SignatureAlgorithm: x509.ECDSAWithSHA256,
+			PublicKeyAlgorithm: x509.ECDSA,
+			PublicKey:          ecdsakey.PublicKey,
+			Subject: pkix.Name{
+				Organization: []string{"g8s"},
+				CommonName:   sstls.Spec.AppName,
+			},
+			DNSNames: sstls.Spec.SANs,
+		}
+
+		csrbytes, _ := x509.CreateCertificateRequest(rand.Reader, &x509csr, ecdsakey)
+		csrblock := &pem.Block{
+			Type:  "CERTIFICATE REQUEST",
+			Bytes: csrbytes,
+		}
+		csrpem := pem.EncodeToMemory(csrblock)
+	*/
 	// write PEM-encoded CSR to chan, wait for controller to return with PEM-encoded cert
-	ktls.CSRPEM <- csrpem
-	certpem := string(<-ktls.CertPEM)
+	//sstls.CSRPEM <- csrpem
+	//certpem := string(<-sstls.CertPEM)
 
-	close(ktls.CSRPEM)
-	close(ktls.CertPEM)
+	//close(sstls.CSRPEM)
+	//close(sstls.CertPEM)
 
 	return map[string]string{
-		"key.pem":  keypem,
-		"cert.pem": certpem,
+		"key.pem":    keypem,
+		"cert.pem":   certpem,
+		"cacert.pem": cacertpem,
 	}
 }
 
-func (ktls KubeTLSBundle) Rotate() map[string]string {
-	newKubeTLSBundle := ktls.Generate()
-	newHistory := append([]string{newKubeTLSBundle["key.pem"]}, newKubeTLSBundle["cert.pem"])
-	newHistory = append(newHistory, ktls.history...)
+func (sstls SelfSignedTLSBundle) Rotate() map[string]string {
+	newSelfSignedTLSBundle := sstls.Generate()
+	newHistory := append([]string{newSelfSignedTLSBundle["key.pem"]}, newSelfSignedTLSBundle["cert.pem"], newSelfSignedTLSBundle["cacert.pem"])
+	newHistory = append(newHistory, sstls.history...)
 	newData := make(map[string]string)
 
 	count := 0
 	hist := ""
-	for i, ssh := range newHistory {
-		mod := i % 2
+	for i, sstls := range newHistory {
+		mod := i % 3
 
 		if mod == 0 {
 			hist = "key.pem-" + strconv.Itoa(count)
 		} else if mod == 1 {
 			hist = "cert.pem-" + strconv.Itoa(count)
+		} else if mod == 2 {
+			hist = "cacert.pem-" + strconv.Itoa(count)
 			count++
 		}
-		newData[hist] = ssh
+		newData[hist] = sstls
 	}
 
 	return newData

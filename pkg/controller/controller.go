@@ -45,7 +45,7 @@ func NewController(
 	kubeClientset kubernetes.Interface,
 	g8sClientset clientset.Interface,
 	allowlistInformer informers.AllowlistInformer,
-	kubeTLSBundleInformer informers.KubeTLSBundleInformer,
+	selfSignedTLSBundleInformer informers.SelfSignedTLSBundleInformer,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
 	certificateSigningRequestInformer certinformers.CertificateSigningRequestInformer,
@@ -78,18 +78,18 @@ func NewController(
 			recorder:      recorder,
 
 			// informers & listers for our custom types
-			allowlistInformer:     allowlistInformer,
-			allowlistLister:       allowlistInformer.Lister(),
-			allowlistSynced:       allowlistInformer.Informer().HasSynced,
-			kubeTLSBundleInformer: kubeTLSBundleInformer,
-			kubeTLSBundleLister:   kubeTLSBundleInformer.Lister(),
-			kubeTLSBundleSynced:   kubeTLSBundleInformer.Informer().HasSynced,
-			loginInformer:         loginInformer,
-			loginLister:           loginInformer.Lister(),
-			loginSynced:           loginInformer.Informer().HasSynced,
-			sshKeyPairInformer:    sshKeyPairInformer,
-			sshKeyPairLister:      sshKeyPairInformer.Lister(),
-			sshKeyPairSynced:      sshKeyPairInformer.Informer().HasSynced,
+			allowlistInformer:           allowlistInformer,
+			allowlistLister:             allowlistInformer.Lister(),
+			allowlistSynced:             allowlistInformer.Informer().HasSynced,
+			selfSignedTLSBundleInformer: selfSignedTLSBundleInformer,
+			selfSignedTLSBundleLister:   selfSignedTLSBundleInformer.Lister(),
+			selfSignedTLSBundleSynced:   selfSignedTLSBundleInformer.Informer().HasSynced,
+			loginInformer:               loginInformer,
+			loginLister:                 loginInformer.Lister(),
+			loginSynced:                 loginInformer.Informer().HasSynced,
+			sshKeyPairInformer:          sshKeyPairInformer,
+			sshKeyPairLister:            sshKeyPairInformer.Lister(),
+			sshKeyPairSynced:            sshKeyPairInformer.Informer().HasSynced,
 
 			// informers & listers for our backing types
 			certificateSigningRequestInformer:    certificateSigningRequestInformer,
@@ -106,38 +106,38 @@ func NewController(
 			secretSynced:                         secretInformer.Informer().HasSynced,
 		},
 		Executor: Executor{
-			allowlistWorkqueue:     workqueue.NewNamedRateLimitingQueue(ratelimiter, "Allowlist"),
-			kubeTLSBundleWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "KubeTLSBundle"),
-			loginWorkqueue:         workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
-			sshKeyPairWorkqueue:    workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
+			allowlistWorkqueue:           workqueue.NewNamedRateLimitingQueue(ratelimiter, "Allowlist"),
+			selfSignedTLSBundleWorkqueue: workqueue.NewNamedRateLimitingQueue(ratelimiter, "SelfSignedTLSBundle"),
+			loginWorkqueue:               workqueue.NewNamedRateLimitingQueue(ratelimiter, "Login"),
+			sshKeyPairWorkqueue:          workqueue.NewNamedRateLimitingQueue(ratelimiter, "SSHKeyPair"),
 		},
 	}
 
 	logger.Info("Setting up event handlers")
 
-	// Set up an event handler for when KubeTLSBundle resources change
-	kubeTLSBundleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueKubeTLSBundle,
+	// Set up an event handler for when SelfSignedTLSBundle resources change
+	selfSignedTLSBundleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueSelfSignedTLSBundle,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueKubeTLSBundle(new)
+			controller.enqueueSelfSignedTLSBundle(new)
 		},
 		DeleteFunc: func(obj interface{}) {
-			ktls, ok := obj.(*g8sv1alpha1.KubeTLSBundle)
-			g8sktls := internalv1alpha1.NewKubeTLSBundle(ktls, kubeClientset.CertificatesV1())
-			meta := g8sktls.GetMeta()
+			sstls, ok := obj.(*g8sv1alpha1.SelfSignedTLSBundle)
+			g8ssstls := internalv1alpha1.NewSelfSignedTLSBundle(sstls, kubeClientset.CertificatesV1())
+			meta := g8ssstls.GetMeta()
 			name := strings.ToLower(meta.TypeMeta.Kind + "-" + meta.ObjectMeta.Name)
 			if !ok {
-				logger.Error(nil, "obj is not a KubeTLSBundle")
+				logger.Error(nil, "obj is not a SelfSignedTLSBundle")
 			}
 			err := controller.kubeClientset.RbacV1().ClusterRoles().Delete(context.TODO(), name, metav1.DeleteOptions{})
 			if err != nil {
-				logger.Error(err, "Error deleting ClusterRole backing KubeTLSBundle: "+name)
+				logger.Error(err, "Error deleting ClusterRole backing SelfSignedTLSBundle: "+name)
 			}
 			err = controller.kubeClientset.CertificatesV1().CertificateSigningRequests().Delete(context.TODO(), name, metav1.DeleteOptions{})
 			if err != nil {
-				logger.Error(err, "Error deleting CertificateSigningRequest backing KubeTLSBundle: "+name)
+				logger.Error(err, "Error deleting CertificateSigningRequest backing SelfSignedTLSBundle: "+name)
 			}
-			controller.recorder.Event(ktls, corev1.EventTypeNormal, SuccessDeleted, MessageResourceDeleted)
+			controller.recorder.Event(sstls, corev1.EventTypeNormal, SuccessDeleted, MessageResourceDeleted)
 		},
 	})
 
@@ -187,12 +187,12 @@ func NewController(
 
 	// Set up an event handler for when Secret resources change. This
 	// handler will lookup the owner of the given Secret, and if it is
-	// owned by a KubeTLSBundle resource then the handler will enqueue that KubeTLSBundle resource for
+	// owned by a SelfSignedTLSBundle resource then the handler will enqueue that SelfSignedTLSBundle resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling Secret resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleKubeTLSBundleObject,
+		AddFunc: controller.handleSelfSignedTLSBundleObject,
 		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*corev1.Secret)
 			oldDepl := old.(*corev1.Secret)
@@ -202,19 +202,19 @@ func NewController(
 				// This section will skip calling handleObject() if they are the same.
 				return
 			}
-			controller.handleKubeTLSBundleObject(new)
+			controller.handleSelfSignedTLSBundleObject(new)
 		},
-		DeleteFunc: controller.handleKubeTLSBundleObject,
+		DeleteFunc: controller.handleSelfSignedTLSBundleObject,
 	})
 
 	// Set up an event handler for when ClusterRole resources change. This
 	// handler will lookup the owner of the given ClusterRole, and if it is
-	// owned by a KubeTLSBundle resource then the handler will enqueue that KubeTLSBundle resource for
+	// owned by a SelfSignedTLSBundle resource then the handler will enqueue that SelfSignedTLSBundle resource for
 	// processing. This way, we don't need to implement custom logic for
 	// handling ClusterRole resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleKubeTLSBundleObject,
+		AddFunc: controller.handleSelfSignedTLSBundleObject,
 		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*rbacv1.ClusterRole)
 			oldDepl := old.(*rbacv1.ClusterRole)
@@ -224,9 +224,9 @@ func NewController(
 				// This section will skip calling handleObject() if they are the same.
 				return
 			}
-			controller.handleKubeTLSBundleObject(new)
+			controller.handleSelfSignedTLSBundleObject(new)
 		},
-		DeleteFunc: controller.handleKubeTLSBundleObject,
+		DeleteFunc: controller.handleSelfSignedTLSBundleObject,
 	})
 
 	// Set up an event handler for when Secret resources change. This

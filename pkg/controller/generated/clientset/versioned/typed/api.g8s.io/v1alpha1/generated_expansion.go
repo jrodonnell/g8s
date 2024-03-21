@@ -19,8 +19,8 @@ package v1alpha1
 
 type AllowlistExpansion interface{}
 
-type KubeTLSBundleExpansion interface{}
-
 type LoginExpansion interface{}
 
 type SSHKeyPairExpansion interface{}
+
+type SelfSignedTLSBundleExpansion interface{}

@@ -5,7 +5,14 @@ import (
 )
 
 func Mutate(body []byte) (resp []byte, err error) {
+	/*
+		TODO:
+			- Get() Allowlist
+			- check if Pod is owned by appsv1 object specified in Allowlist
+			- if yes, mutate
+			- create ClusterRoleBinding
+	*/
 	err = fmt.Errorf("")
 
-	return resp, err
+	return []byte("RESPONSE"), err
 }

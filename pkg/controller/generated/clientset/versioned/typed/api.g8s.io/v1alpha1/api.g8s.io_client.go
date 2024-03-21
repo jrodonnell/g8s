@@ -28,9 +28,9 @@ import (
 type ApiV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	AllowlistsGetter
-	KubeTLSBundlesGetter
 	LoginsGetter
 	SSHKeyPairsGetter
+	SelfSignedTLSBundlesGetter
 }
 
 // ApiV1alpha1Client is used to interact with features provided by the api.g8s.io group.
@@ -42,16 +42,16 @@ func (c *ApiV1alpha1Client) Allowlists(namespace string) AllowlistInterface {
 	return newAllowlists(c, namespace)
 }
 
-func (c *ApiV1alpha1Client) KubeTLSBundles(namespace string) KubeTLSBundleInterface {
-	return newKubeTLSBundles(c, namespace)
-}
-
 func (c *ApiV1alpha1Client) Logins(namespace string) LoginInterface {
 	return newLogins(c, namespace)
 }
 
 func (c *ApiV1alpha1Client) SSHKeyPairs(namespace string) SSHKeyPairInterface {
 	return newSSHKeyPairs(c, namespace)
+}
+
+func (c *ApiV1alpha1Client) SelfSignedTLSBundles(namespace string) SelfSignedTLSBundleInterface {
+	return newSelfSignedTLSBundles(c, namespace)
 }
 
 // NewForConfig creates a new ApiV1alpha1Client for the given config.

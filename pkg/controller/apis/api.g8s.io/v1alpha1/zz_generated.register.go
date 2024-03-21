@@ -59,12 +59,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Allowlist{},
 		&AllowlistList{},
-		&KubeTLSBundle{},
-		&KubeTLSBundleList{},
 		&Login{},
 		&LoginList{},
 		&SSHKeyPair{},
 		&SSHKeyPairList{},
+		&SelfSignedTLSBundle{},
+		&SelfSignedTLSBundleList{},
 	)
 	// AddToGroupVersion allows the serialization of client types like ListOptions.
 	v1.AddToGroupVersion(scheme, SchemeGroupVersion)

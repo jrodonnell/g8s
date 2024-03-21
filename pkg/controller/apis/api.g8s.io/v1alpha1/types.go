@@ -73,31 +73,32 @@ type AllowlistList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:genclient:method=UpdateStatus,verb=updateStatus,subresource=status, \
 // result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
-// KubeTLSBundle is the Schema for the KubeTLSBundles API
-type KubeTLSBundle struct {
+// SelfSignedTLSBundle is the Schema for the SelfSignedTLSBundles API
+type SelfSignedTLSBundle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KubeTLSBundleSpec   `json:"spec,omitempty"`
-	Status KubeTLSBundleStatus `json:"status,omitempty"`
+	Spec   SelfSignedTLSBundleSpec   `json:"spec,omitempty"`
+	Status SelfSignedTLSBundleStatus `json:"status,omitempty"`
 }
 
-// KubeTLSBundleSpec defines the desired state of KubeTLSBundle
-type KubeTLSBundleSpec struct {
-	AppName string `json:"appname,omitempty"` // becomes 'O = g8s:$AppName' in CSR Subject
+// SelfSignedTLSBundleSpec defines the desired state of SelfSignedTLSBundle
+type SelfSignedTLSBundleSpec struct {
+	AppName string   `json:"appname,omitempty"`
+	SANs    []string `json:"sans,omitempty"`
 }
 
-// KubeTLSBundleStatus defines the observed state of KubeTLSBundle
-type KubeTLSBundleStatus struct {
+// SelfSignedTLSBundleStatus defines the observed state of SelfSignedTLSBundle
+type SelfSignedTLSBundleStatus struct {
 	Ready bool `json:"ready"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// KubeTLSBundleList contains a list of KubeTLSBundle
-type KubeTLSBundleList struct {
+// SelfSignedTLSBundleList contains a list of SelfSignedTLSBundle
+type SelfSignedTLSBundleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KubeTLSBundle `json:"items"`
+	Items           []SelfSignedTLSBundle `json:"items"`
 }
 
 // +genclient

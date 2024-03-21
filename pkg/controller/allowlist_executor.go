@@ -105,7 +105,11 @@ func (c *Controller) allowlistSyncHandler(ctx context.Context, key string) error
 		return err
 	}
 
-	// TODO: create MAW and Service pointing to it
+	/*
+		TODO:
+			- propagates backend Secrets if specified in Allowlist
+			- creates ClusterRoleBinding
+	*/
 
 	// DeepCopy for safety
 	allowlist := allowlistFromLister.DeepCopy()
