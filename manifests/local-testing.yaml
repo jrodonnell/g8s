@@ -1,0 +1,307 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: allowlists.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: Allowlist
+    listKind: AllowlistList
+    plural: allowlists
+    singular: allowlist
+    shortNames: ["allow"]
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Allowlist is the Schema for the allowlists API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AllowlistSpec defines the desired state of Allowlist
+            properties:
+              password:
+                description: PasswordSpec defines the desired state of Password
+                properties:
+                  characterset:
+                    type: string
+                  length:
+                    type: integer
+                type: object
+              username:
+                type: string
+            type: object
+          status:
+            description: AllowlistStatus defines the observed state of Allowlist
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: logins.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: Login
+    listKind: LoginList
+    plural: logins
+    singular: login
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Login is the Schema for the logins API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: LoginSpec defines the desired state of Login
+            properties:
+              password:
+                description: PasswordSpec defines the desired state of Password
+                properties:
+                  characterset:
+                    type: string
+                  length:
+                    type: integer
+                type: object
+              username:
+                type: string
+            type: object
+          status:
+            description: LoginStatus defines the observed state of Login
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: selfsignedtlsbundles.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: SelfSignedTLSBundle
+    listKind: SelfSignedTLSBundleList
+    plural: selfsignedtlsbundles
+    singular: selfsignedtlsbundle
+    shortNames: ["sstls"]
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: SelfSignedTLSBundle is the Schema for the logins API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SelfSignedTLSBundleSpec defines the desired state of SelfSignedTLSBundle
+            properties:
+              appname:
+                type: string
+              sans:
+                items:
+                  type: string
+                type: array
+            type: object
+          status:
+            description: SelfSignedTLSBundleStatus defines the observed state of SelfSignedTLSBundle
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sshkeypairs.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: SSHKeyPair
+    listKind: SSHKeyPairList
+    plural: sshkeypairs
+    singular: sshkeypair
+    shortNames: ["ssh"]
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: SSHKeyPair is the Schema for the sshkeypairs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SSHKeyPairSpec defines the desired state of SSHKeyPair
+            properties:
+              bitsize:
+                type: integer
+              keytype:
+                type: string
+            type: object
+          status:
+            description: SSHKeyPairStatus defines the observed state of SSHKeyPair
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: g8s
+  namespace: g8s
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name:  g8s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: g8s
+  namespace: g8s
+---
+apiVersion: api.g8s.io/v1alpha1
+kind: SelfSignedTLSBundle
+metadata:
+  name: g8s-webhook
+  namespace: g8s
+spec:
+  appname: g8s-webhook
+  sans:
+    - "g8s-webhook"
+    - "g8s-webhook.g8s"
+    - "g8s-webhook.g8s.svc"
+    - "g8s-webhook.g8s.svc.cluster.local"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: g8s-webhook
+  namespace: g8s
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: g8s-webhook
+  namespace: g8s
+subsets:
+- addresses:
+  - ip: 172.30.241.153
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: g8s-webhook
+  labels:
+    app: g8s-webhook
+webhooks:
+  - name: g8s-webhook.g8s.svc.cluster.local
+    clientConfig:
+      service:
+        name: g8s-webhook
+        namespace: g8s
+        path: "/mutate"
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchLabels:
+        mutateme: enabled
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
