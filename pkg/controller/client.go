@@ -6,13 +6,11 @@ import (
 	listers "github.com/jrodonnell/g8s/pkg/controller/generated/listers/api.g8s.io/v1alpha1"
 
 	admissionregistrationinformers "k8s.io/client-go/informers/admissionregistration/v1"
-	certinformers "k8s.io/client-go/informers/certificates/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
 	"k8s.io/client-go/kubernetes"
 	admissionregistrationlisters "k8s.io/client-go/listers/admissionregistration/v1"
-	certlisters "k8s.io/client-go/listers/certificates/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	rbaclisters "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
@@ -31,7 +29,6 @@ type Client struct {
 	selfSignedTLSBundleInformer          informers.SelfSignedTLSBundleInformer
 	loginInformer                        informers.LoginInformer
 	sshKeyPairInformer                   informers.SSHKeyPairInformer
-	certificateSigningRequestInformer    certinformers.CertificateSigningRequestInformer
 	clusterRoleInformer                  rbacinformers.ClusterRoleInformer
 	mutatingWebhookConfigurationInformer admissionregistrationinformers.MutatingWebhookConfigurationInformer
 	secretInformer                       coreinformers.SecretInformer
@@ -47,8 +44,6 @@ type Client struct {
 	sshKeyPairSynced          cache.InformerSynced
 
 	// listers for k8s types owned by our custom types
-	certificateSigningRequestLister    certlisters.CertificateSigningRequestLister
-	certificateSigningRequestSynced    cache.InformerSynced
 	clusterRoleLister                  rbaclisters.ClusterRoleLister
 	clusterRoleSynced                  cache.InformerSynced
 	mutatingWebhookConfigurationLister admissionregistrationlisters.MutatingWebhookConfigurationLister

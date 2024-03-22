@@ -23,5 +23,6 @@ bin/
 go.work
 
 # stuff i use for local testing
+cacert.pem
 cert.pem
 key.pem

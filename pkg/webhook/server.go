@@ -6,16 +6,21 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
+	clientset "github.com/jrodonnell/g8s/pkg/controller/generated/clientset/versioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	//"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
 
-func Serve(ctx context.Context, logger klog.Logger) {
+func Serve(ctx context.Context, logger klog.Logger, g8sclientset clientset.Interface) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
-	mux.HandleFunc("/mutate", handleMutate)
+	mux.HandleFunc("/mutate", func(w http.ResponseWriter, r *http.Request) {
+		handleMutate(w, r, logger, g8sclientset)
+	})
 
 	s := http.Server{
 		Addr:           ":8443",
@@ -37,8 +42,20 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/mutate", http.StatusFound)
 }
 
-func handleMutate(w http.ResponseWriter, r *http.Request) {
-	os.Exit(0)
+func handleMutate(w http.ResponseWriter, r *http.Request, logger klog.Logger, g8sclientset clientset.Interface) {
+	/* TODO
+	- in deployment yaml, create blank Allowlist
+	- Get() Allowlist
+	- check if Pod is owned by appsv1 object specified in Allowlist
+	*/
+	al, err := g8sclientset.ApiV1alpha1().Allowlists("g8s").Get(context.TODO(), "g8s", metav1.GetOptions{})
+
+	if err != nil {
+		logger.Error(err, "error getting Allowlist: g8s")
+	}
+
+	fmt.Println(al)
+
 	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {

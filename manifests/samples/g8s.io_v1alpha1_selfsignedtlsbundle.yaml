@@ -4,3 +4,4 @@ metadata:
   name: g8s
 spec:
   appname: "g8s"
+  sans: ["*.dev.local"]

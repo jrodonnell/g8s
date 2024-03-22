@@ -20,7 +20,6 @@ import (
 	"k8s.io/klog/v2"
 
 	admissionregistrationinformers "k8s.io/client-go/informers/admissionregistration/v1"
-	certinformers "k8s.io/client-go/informers/certificates/v1"
 	secretinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 
@@ -48,7 +47,6 @@ func NewController(
 	selfSignedTLSBundleInformer informers.SelfSignedTLSBundleInformer,
 	loginInformer informers.LoginInformer,
 	sshKeyPairInformer informers.SSHKeyPairInformer,
-	certificateSigningRequestInformer certinformers.CertificateSigningRequestInformer,
 	clusterRoleInformer rbacinformers.ClusterRoleInformer,
 	mutatingWebhookConfigurationInformer admissionregistrationinformers.MutatingWebhookConfigurationInformer,
 	secretInformer secretinformers.SecretInformer) *Controller {
@@ -92,9 +90,6 @@ func NewController(
 			sshKeyPairSynced:            sshKeyPairInformer.Informer().HasSynced,
 
 			// informers & listers for our backing types
-			certificateSigningRequestInformer:    certificateSigningRequestInformer,
-			certificateSigningRequestLister:      certificateSigningRequestInformer.Lister(),
-			certificateSigningRequestSynced:      certificateSigningRequestInformer.Informer().HasSynced,
 			clusterRoleInformer:                  clusterRoleInformer,
 			clusterRoleLister:                    clusterRoleInformer.Lister(),
 			clusterRoleSynced:                    clusterRoleInformer.Informer().HasSynced,

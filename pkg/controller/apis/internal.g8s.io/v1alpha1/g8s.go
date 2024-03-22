@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math"
 	"math/big"
 	"strconv"
@@ -226,10 +227,10 @@ func (sstls SelfSignedTLSBundle) GetMeta() Meta {
 func (sstls SelfSignedTLSBundle) Generate() map[string]string {
 	// create private key and self-signed CA cert for signing client's TLS cert
 	ecdsacakey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	serial, _ := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64-1))
-	serial = new(big.Int).Add(serial, big.NewInt(1))
+	caserial, _ := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64-1))
+	caserial = new(big.Int).Add(caserial, big.NewInt(1))
 	x509cacert := &x509.Certificate{
-		SerialNumber: serial,
+		SerialNumber: caserial,
 		Subject: pkix.Name{
 			CommonName:   sstls.Spec.AppName,
 			Organization: []string{"g8s"},
@@ -237,16 +238,25 @@ func (sstls SelfSignedTLSBundle) Generate() map[string]string {
 		DNSNames:              sstls.Spec.SANs,
 		NotBefore:             time.Now().UTC(),
 		NotAfter:              time.Now().Add(time.Hour * 24 * 365).UTC(),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
-	cacertbytes, _ := x509.CreateCertificate(rand.Reader, x509cacert, x509cacert, ecdsacakey.PublicKey, ecdsacakey)
-	x509cacert, _ = x509.ParseCertificate(cacertbytes)
-
+	fmt.Println("x509cacert: ", x509cacert)
+	cacertbytes, err := x509.CreateCertificate(rand.Reader, x509cacert, x509cacert, &ecdsacakey.PublicKey, ecdsacakey)
+	if err != nil {
+		fmt.Println("cacertbytes: ", err, string(cacertbytes))
+	}
+	x509cacert, err = x509.ParseCertificate(cacertbytes)
+	if err != nil {
+		fmt.Println("x509cacert: ", err, x509cacert)
+	}
 	// use CA cert to sign client's TLS cert
 	ecdsaclientkey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	clientserial, _ := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64-1))
+	clientserial = new(big.Int).Add(caserial, big.NewInt(1))
 	x509clientcert := &x509.Certificate{
+		SerialNumber: clientserial,
 		Subject: pkix.Name{
 			CommonName:   sstls.Spec.AppName,
 			Organization: []string{"g8s"},
@@ -257,8 +267,11 @@ func (sstls SelfSignedTLSBundle) Generate() map[string]string {
 		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
-
-	clientcertbytes, _ := x509.CreateCertificate(rand.Reader, x509clientcert, x509cacert, ecdsaclientkey.PublicKey, ecdsaclientkey)
+	fmt.Println("x509clientcert: ", x509clientcert)
+	clientcertbytes, err := x509.CreateCertificate(rand.Reader, x509clientcert, x509cacert, &ecdsaclientkey.PublicKey, ecdsacakey)
+	if err != nil {
+		fmt.Println("clientcertbytes: ", err, string(clientcertbytes))
+	}
 
 	// encode these things to DER strings
 	clientkeybytes, _ := x509.MarshalECPrivateKey(ecdsaclientkey)

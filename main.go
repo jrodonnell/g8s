@@ -33,26 +33,26 @@ func main() {
 	// set up signals so we handle the shutdown signal gracefully
 	ctx := signals.SetupSignalHandler()
 	logger := klog.FromContext(ctx)
+	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+	if err != nil {
+		logger.Error(err, "Error building kubeconfig")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		logger.Error(err, "Error building kubernetes clientset")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
+
+	g8sClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		logger.Error(err, "Error building g8s clientset")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
 
 	switch role {
 	case "controller":
-		cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-		if err != nil {
-			logger.Error(err, "Error building kubeconfig")
-			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-		}
-
-		kubeClient, err := kubernetes.NewForConfig(cfg)
-		if err != nil {
-			logger.Error(err, "Error building kubernetes clientset")
-			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-		}
-
-		g8sClient, err := clientset.NewForConfig(cfg)
-		if err != nil {
-			logger.Error(err, "Error building g8s clientset")
-			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-		}
 
 		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 		g8sInformerFactory := informers.NewSharedInformerFactory(g8sClient, time.Second*30)
@@ -62,7 +62,6 @@ func main() {
 			g8sInformerFactory.Api().V1alpha1().SelfSignedTLSBundles(),
 			g8sInformerFactory.Api().V1alpha1().Logins(),
 			g8sInformerFactory.Api().V1alpha1().SSHKeyPairs(),
-			kubeInformerFactory.Certificates().V1().CertificateSigningRequests(),
 			kubeInformerFactory.Rbac().V1().ClusterRoles(),
 			kubeInformerFactory.Admissionregistration().V1().MutatingWebhookConfigurations(),
 			kubeInformerFactory.Core().V1().Secrets(),
@@ -78,7 +77,7 @@ func main() {
 			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 		}
 	case "webhook":
-		webhook.Serve(ctx, logger)
+		webhook.Serve(ctx, logger, g8sClient)
 	default:
 		err := errors.New("invalid role")
 		logger.Error(err, "Role must be either 'controller' or 'webhook'")
