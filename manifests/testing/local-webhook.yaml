@@ -1,0 +1,170 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: g8s
+  namespace: g8s
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name:  g8s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: g8s
+  namespace: g8s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: g8s-webhook
+  namespace: g8s
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: g8s-webhook
+  namespace: g8s
+subsets:
+- addresses:
+  - ip: 172.30.241.153
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: g8s-webhook
+  labels:
+    app: g8s-webhook
+webhooks:
+  - name: g8s-webhook.g8s.svc
+    clientConfig:
+      # replace this with your own value, you can use the SelfSignedTLSBundle obejct commented out below if you'd like
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUI1RENDQVltZ0F3SUJBZ0lJWFF0MFZuQmRsdFV3Q2dZSUtvWkl6ajBFQXdJd0pERU1NQW9HQTFVRUNoTUQKWnpoek1SUXdFZ1lEVlFRREV3dG5PSE10ZDJWaWFHOXZhekFlRncweU5EQXpNakl3TWpBME5USmFGdzB5TlRBegpNakl3TWpBME5USmFNQ1F4RERBS0JnTlZCQW9UQTJjNGN6RVVNQklHQTFVRUF4TUxaemh6TFhkbFltaHZiMnN3CldUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFTK1pScVllSmZlN1R0Yjc5ZS9FbUtjVE5UbnBkVFAKa1Z5UUxBTGZYeWlkZVdLSWV1aWpjbmhCOWd4SXptNWswVk1idkczdmdqSGllTHlTZlptVXFsd2NvNEdrTUlHaApNQTRHQTFVZER3RUIvd1FFQXdJQkJqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUklIWWNNCllxVVlTOWs3Q2U2dWRiZWN3dkc0U3pCZkJnTlZIUkVFV0RCV2dndG5PSE10ZDJWaWFHOXZhNElQWnpoekxYZGwKWW1odmIyc3Vaemh6Z2hObk9ITXRkMlZpYUc5dmF5NW5PSE11YzNaamdpRm5PSE10ZDJWaWFHOXZheTVuT0hNdQpjM1pqTG1Oc2RYTjBaWEl1Ykc5allXd3dDZ1lJS29aSXpqMEVBd0lEU1FBd1JnSWhBTmZ2R01KdjV2WmpQekNPCnBQUUpXVGhabnlCcjNxVzRjalRlMERIdk9lMkhBaUVBOEF2YzNVOEhvRlRhTTRkbDNaN3JZNUpqMWpleGFLT2oKNHlEY0NMRldRL1k9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+      service:
+        name: g8s-webhook
+        namespace: g8s
+        path: "/mutate"
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchLabels:
+        g8s-injection: enabled
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: g8s-webhook
+  labels:
+    app: g8s-webhook
+webhooks:
+  - name: g8s-webhook.g8s.svc
+    clientConfig:
+      # replace this with your own value, you can use the SelfSignedTLSBundle obejct commented out below if you'd like
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUI1RENDQVltZ0F3SUJBZ0lJWFF0MFZuQmRsdFV3Q2dZSUtvWkl6ajBFQXdJd0pERU1NQW9HQTFVRUNoTUQKWnpoek1SUXdFZ1lEVlFRREV3dG5PSE10ZDJWaWFHOXZhekFlRncweU5EQXpNakl3TWpBME5USmFGdzB5TlRBegpNakl3TWpBME5USmFNQ1F4RERBS0JnTlZCQW9UQTJjNGN6RVVNQklHQTFVRUF4TUxaemh6TFhkbFltaHZiMnN3CldUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFTK1pScVllSmZlN1R0Yjc5ZS9FbUtjVE5UbnBkVFAKa1Z5UUxBTGZYeWlkZVdLSWV1aWpjbmhCOWd4SXptNWswVk1idkczdmdqSGllTHlTZlptVXFsd2NvNEdrTUlHaApNQTRHQTFVZER3RUIvd1FFQXdJQkJqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUklIWWNNCllxVVlTOWs3Q2U2dWRiZWN3dkc0U3pCZkJnTlZIUkVFV0RCV2dndG5PSE10ZDJWaWFHOXZhNElQWnpoekxYZGwKWW1odmIyc3Vaemh6Z2hObk9ITXRkMlZpYUc5dmF5NW5PSE11YzNaamdpRm5PSE10ZDJWaWFHOXZheTVuT0hNdQpjM1pqTG1Oc2RYTjBaWEl1Ykc5allXd3dDZ1lJS29aSXpqMEVBd0lEU1FBd1JnSWhBTmZ2R01KdjV2WmpQekNPCnBQUUpXVGhabnlCcjNxVzRjalRlMERIdk9lMkhBaUVBOEF2YzNVOEhvRlRhTTRkbDNaN3JZNUpqMWpleGFLT2oKNHlEY0NMRldRL1k9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+      service:
+        name: g8s-webhook
+        namespace: g8s
+        path: "/validate"
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["api.g8s.io"]
+        apiVersions: ["v1alpha1"]
+        resources: ["allowlists"]
+    namespaceSelector:
+      matchLabels:
+        g8s-master: "true"
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+---
+apiVersion: api.g8s.io/v1alpha1
+kind: Allowlist
+metadata:
+  name: g8s-master
+spec:
+  logins:
+    - name: root
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: target-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [root] }
+          containers:
+            - onelogin
+            - oneofeach
+    - name: riley
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: all-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [riley] }
+  selfSignedTLSBundles:
+    - name: riley-dev
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: target-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [root] }
+          containers:
+            - oneofeach
+  sshKeyPairs:
+    - name: root-rsa
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: target-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [root] }
+          containers:
+            - oneofeach
+    - name: riley-ed25519
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: all-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [riley] }
+---
+###
+### Uncomment and apply this spec below to create a SelfSignedTLSBundle that will work for the MWC defined above.
+### Copy the base64-encoded cacert.pem you get out of it and paste it into the caBundle field
+###
+#apiVersion: api.g8s.io/v1alpha1
+#kind: SelfSignedTLSBundle
+#metadata:
+#  name: g8s-webhook
+#  namespace: g8s
+#spec:
+#  appName: g8s-webhook
+#  sans:
+#    - "g8s-webhook"
+#    - "g8s-webhook.g8s"
+#    - "g8s-webhook.g8s.svc"
+#    - "g8s-webhook.g8s.svc.cluster.local"

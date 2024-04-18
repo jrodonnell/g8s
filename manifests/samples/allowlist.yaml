@@ -1,0 +1,56 @@
+---
+apiVersion: api.g8s.io/v1alpha1
+kind: Allowlist
+metadata:
+  name: g8s-master
+spec:
+  logins:
+    - name: root
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: target-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [root] }
+          containers:
+            - onelogin
+            - oneofeach
+    - name: riley
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: all-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [riley] }
+  selfSignedTLSBundles:
+    - name: riley-dev
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: target-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [root] }
+          containers:
+            - oneofeach
+  sshKeyPairs:
+    - name: root-rsa
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: target-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [root] }
+          containers:
+            - oneofeach
+    - name: riley-ed25519
+      targets:
+        - namespace: g8s-test
+          selector:
+            matchLabels:
+              app: all-containers
+            matchExpressions:
+              - { key: user, operator: In, values: [riley] }

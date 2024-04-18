@@ -1,0 +1,9 @@
+---
+apiVersion: api.g8s.io/v1alpha1
+kind: SelfSignedTLSBundle
+metadata:
+  name: riley-dev
+  namespace: g8s
+spec:
+  appName: "riley-dev"
+  sans: ["*.dev.local"]

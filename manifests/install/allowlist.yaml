@@ -1,0 +1,7 @@
+---
+apiVersion: api.g8s.io/v1alpha1
+kind: Allowlist
+metadata:
+  name: g8s-master
+  namespace: g8s
+spec: {}

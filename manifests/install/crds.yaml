@@ -1,0 +1,361 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: allowlists.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: Allowlist
+    listKind: AllowlistList
+    plural: allowlists
+    singular: allowlist
+    shortNames: ["allow"]
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Allowlist is the Schema for the allowlists API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AllowlistSpec defines the desired state of Allowlist
+            type: object
+            properties:
+              logins:
+                description: List of Login objects and their target rules
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - targets
+                  properties:
+                    name:
+                      type: string
+                    targets:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - selector
+                        - namespace
+                        properties:
+                          selector:
+                            type: object
+                            properties:
+                              matchLabels:
+                                type: object
+                                additionalProperties:
+                                  type: string
+                              matchExpressions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    key:
+                                      type: string
+                                    operator:
+                                      type: string
+                                    values:
+                                      type: array
+                                      items:
+                                        type: string
+                          namespace:
+                            type: string
+                          containers:
+                            type: array
+                            items:
+                              type: string
+              selfSignedTLSBundles:
+                description: List of SelfSignedTLSBundle objects and their target rules
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - targets
+                  properties:
+                    name:
+                      type: string
+                    targets:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - selector
+                        - namespace
+                        properties:
+                          selector:
+                            type: object
+                            properties:
+                              matchLabels:
+                                type: object
+                                additionalProperties:
+                                  type: string
+                              matchExpressions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    key:
+                                      type: string
+                                    operator:
+                                      type: string
+                                    values:
+                                      type: array
+                                      items:
+                                        type: string
+                          namespace:
+                            type: string
+                          containers:
+                            type: array
+                            items:
+                              type: string
+              sshKeyPairs:
+                description: List of SSHKeyPair objects and their target rules
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - targets
+                  properties:
+                    name:
+                      type: string
+                    targets:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - selector
+                        - namespace
+                        properties:
+                          selector:
+                            type: object
+                            properties:
+                              matchLabels:
+                                type: object
+                                additionalProperties:
+                                  type: string
+                              matchExpressions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    key:
+                                      type: string
+                                    operator:
+                                      type: string
+                                    values:
+                                      type: array
+                                      items:
+                                        type: string
+                          namespace:
+                            type: string
+                          containers:
+                            type: array
+                            items:
+                              type: string
+          status:
+            description: AllowlistStatus defines the observed state of Allowlist
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: logins.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: Login
+    listKind: LoginList
+    plural: logins
+    singular: login
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Login is the Schema for the logins API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: LoginSpec defines the desired state of Login
+            type: object
+            required:
+            - password
+            - username
+            properties:
+              password:
+                description: PasswordSpec defines the desired state of Password
+                type: object
+                required:
+                - characterSet
+                - length
+                properties:
+                  characterSet:
+                    type: string
+                  length:
+                    type: integer
+              username:
+                type: string
+          status:
+            description: LoginStatus defines the observed state of Login
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: selfsignedtlsbundles.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: SelfSignedTLSBundle
+    listKind: SelfSignedTLSBundleList
+    plural: selfsignedtlsbundles
+    singular: selfsignedtlsbundle
+    shortNames: ["sstls"]
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: SelfSignedTLSBundle is the Schema for the selfsignedtlsbundles API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SelfSignedTLSBundleSpec defines the desired state of SelfSignedTLSBundle
+            type: object
+            required:
+            - appName
+            - sans
+            properties:
+              appName:
+                type: string
+              sans:
+                items:
+                  type: string
+                type: array
+          status:
+            description: SelfSignedTLSBundleStatus defines the observed state of SelfSignedTLSBundle
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sshkeypairs.api.g8s.io
+spec:
+  group: api.g8s.io
+  names:
+    kind: SSHKeyPair
+    listKind: SSHKeyPairList
+    plural: sshkeypairs
+    singular: sshkeypair
+    shortNames: ["ssh"]
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: SSHKeyPair is the Schema for the sshkeypairs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SSHKeyPairSpec defines the desired state of SSHKeyPair
+            type: object
+            required:
+            - keyType
+            properties:
+              bitSize:
+                type: integer
+              keyType:
+                type: string
+          status:
+            description: SSHKeyPairStatus defines the observed state of SSHKeyPair
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    subresources:
+      status: {}
+    served: true
+    storage: true

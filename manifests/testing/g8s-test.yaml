@@ -1,0 +1,67 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    g8s-injection: enabled
+  name: g8s-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: target-containers
+  namespace: g8s-test
+spec:
+  selector:
+    matchLabels:
+      app: target-containers
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: target-containers
+        user: root
+    spec:
+      containers:
+      - name: onelogin
+        image: bash:5.2.26
+        command: [ "/usr/local/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
+      - name: oneofeach
+        image: bash:5.2.26
+        command: [ "/usr/local/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
+      - name: none
+        image: bash:5.2.26
+        command: [ "/usr/local/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: all-containers
+  namespace: g8s-test
+spec:
+  selector:
+    matchLabels:
+      app: all-containers
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: all-containers
+        user: riley
+    spec:
+      containers:
+      - name: one
+        image: bash:5.2.26
+        command: [ "/usr/local/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
+      - name: two
+        image: bash:5.2.26
+        command: [ "/usr/local/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
+      - name: three
+        image: bash:5.2.26
+        command: [ "/usr/local/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
