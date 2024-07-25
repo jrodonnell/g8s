@@ -13,11 +13,13 @@ fi
 
 WORKDIR=$(mktemp -d) && pushd $WORKDIR
 
+curl -sSOL https://raw.githubusercontent.com/jrodonnell/g8s/main/manifests/install/namespace.yaml
 curl -sSOL https://raw.githubusercontent.com/jrodonnell/g8s/main/manifests/install/allowlist.yaml
 curl -sSOL https://raw.githubusercontent.com/jrodonnell/g8s/main/manifests/install/controller.yaml
 curl -sSOL https://raw.githubusercontent.com/jrodonnell/g8s/main/manifests/install/crds.yaml
 curl -sSOL https://raw.githubusercontent.com/jrodonnell/g8s/main/manifests/install/webhook.yaml
 
+kubectl apply -f namespace.yaml
 kubectl apply -f crds.yaml
 kubectl apply -f controller.yaml
 kubectl wait --for=condition=Ready pod -l app=g8s-controller -n g8s

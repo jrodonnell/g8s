@@ -1,11 +1,4 @@
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    g8s-injection: enabled
-  name: g8s
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
